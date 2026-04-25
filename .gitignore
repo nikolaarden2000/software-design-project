@@ -1,0 +1,7 @@
+static/coverage/
+static/node_modules/
+static/auth/coverage/
+static/home/coverage/
+static/me/coverage/
+static/room/coverage/
+

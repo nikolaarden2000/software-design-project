@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>СВОя Бронь</title>
+
+  <link rel="stylesheet" href="/static/home/topbar.css">
+  <link rel="stylesheet" href="/static/home/styles.css">
+</head>
+<body data-initial-city="">
+
+  <header class="topbar">
+    <div class="topbar__left">
+      <a href="/" class="brand" id="brand">Своя Бронь</a>
+    </div>
+
+    <div class="topbar__center">
+      <button class="city-btn" id="cityBtn" aria-haspopup="dialog">Ваш город: <span id="cityName">...</span> ▾</button>
+    </div>
+
+    <div class="topbar__right">
+      <div class="auth-container">
+        {{ if .Auth }}
+          <button id="authButton" class="auth-btn" data-auth="1" data-username="{{.Username }}">Кабинет</button>
+        {{ else }}
+          <button id="authButton" class="auth-btn" data-auth="0">Войти</button>
+        {{ end }}
+      
+      </div>
+    </div>
+  </header>
+
+
+  <main class="container">
+    <aside class="filters" id="filters">
+      <h3>Фильтры</h3>
+
+      <div class="filter-block">
+        <label class="filter-label">Компании</label>
+        <div id="companyList" class="company-list">
+          <div class="placeholder">Загрузка...</div>
+        </div>
+        <div class="company-toggle-wrap" id="companyToggleWrap"></div>
+      </div>
+
+     <div class="filter-block">
+  	<label class="filter-label">Цена (руб/час)</label>
+  	<input 
+    		type="text" 
+    		id="priceInput" 
+    		placeholder="максимальная цена" 
+    		inputmode="numeric"
+    		pattern="[0-9]*"
+  	/>
+     </div>
+
+      <div class="filter-block">
+        <label class="filter-label">Вместимость (от)</label>
+ 	<input 
+    		type="number" 
+    		id="capacityInput" 
+    		placeholder="Вместимость" 
+                min="1" 
+		step="1"
+  	/>
+     </div>
+
+      </div>
+
+      <div class="filter-actions">
+        <button id="applyFilters" class="btn primary">Применить</button>
+        <button id="clearFilters" class="btn">Сбросить</button>
+      </div>
+    </aside>
+
+    <section class="main-area">
+      <div id="statusBar" class="status-bar" aria-live="polite" hidden></div>
+
+      <div id="cardsWrapper" class="cards-wrapper" tabindex="0">
+        <div class="loading">Загрузка...</div>
+      </div>
+    </section>
+  </main>
+
+
+  <dialog id="cityModal" class="city-modal">
+    <form method="dialog" class="city-modal__form">
+      <h3>Выберите город</h3>
+      <input id="citySearch" type="search" placeholder="Поиск города..." />
+      <ul id="cityList" class="city-list">
+        <li class="city-item">Москва</li>
+        <li class="city-item">Санкт-Петербург</li>
+        <li class="city-item">Казань</li>
+        <li class="city-item">Екатеринбург</li>
+        <li class="city-item">Новосибирск</li>
+        <li class="city-item">Нижний Новгород</li>
+      </ul>
+      <menu class="dialog-actions">
+        <button id="cityCancel" class="btn">Отмена</button>
+        <button id="cityOk" class="btn primary">Выбрать</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <script src="/static/home/home.js" defer></script>
+</body>
+</html>

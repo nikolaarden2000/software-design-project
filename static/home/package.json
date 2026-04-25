@@ -1,0 +1,17 @@
+{
+  "name": "home-project",
+  "version": "1.0.0",
+  "description": "Project for unit testing",
+  "main": "home.js",
+  "scripts": {
+    "test": "jest --coverage"
+  },
+  "jest": {
+    "testEnvironment": "jsdom"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0"
+  }
+}
+

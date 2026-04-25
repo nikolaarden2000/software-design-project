@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>СВОя Бронь — Авторизация</title>
+
+
+  <link rel="stylesheet" href="/static/home/topbar.css">
+  <link rel="stylesheet" href="/static/home/styles.css">
+  <link rel="stylesheet" href="/static/auth/auth.css">
+
+</head>
+<body>
+ 
+  <header class="topbar">
+    <div class="topbar__left">
+      <a href="/" class="brand" id="brand">Своя Бронь</a>
+    </div>
+    <div class="topbar__center"></div>
+    <div class="topbar__right"></div>
+  </header>
+
+  <main class="auth-page-wrap">
+    <div class="auth-card">
+      {{ if .Auth }}
+
+        <div class="auth-header">Вы уже авторизованы</div>
+        <div id="authMessage">Вы уже вошли в аккаунт{{ if .Username }} как {{ .Username }}{{ end }}.</div>
+        <div class="auth-actions">
+          <a class="link-as-btn primary" href="/me">Перейти в кабинет</a>
+          <button id="logoutBtn" class="btn">Выйти</button>
+        </div>
+
+      {{ else }}
+  
+        <div class="auth-header">Вход в аккаунт / Регистрация</div>
+
+        <div id="authMessage" aria-live="polite"></div>
+
+        <div class="auth-tabs" role="tablist" aria-label="Авторизация">
+          <button class="auth-tab active" data-tab="login" role="tab" aria-selected="true" id="tab-login">Вход</button>
+          <button class="auth-tab" data-tab="register" role="tab" aria-selected="false" id="tab-register">Регистрация</button>
+        </div>
+
+        <form id="loginForm" class="auth-form" data-form="login" aria-labelledby="tab-login" novalidate>
+          <div class="form-group"><input id="loginEmail" type="email" name="email" placeholder="Email" required></div>
+          <div class="form-group"><input id="loginPassword" type="password" name="password" placeholder="Пароль" required></div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button type="submit" id="loginSubmit" class="btn primary">Войти</button>
+          </div>
+        </form>
+
+        <form id="registerForm" class="auth-form hidden" data-form="register" aria-labelledby="tab-register" novalidate>
+          <div class="form-group"><input id="regUsername" type="text" name="username" placeholder="Логин" required></div>
+          <div class="form-group"><input id="regEmail" type="email" name="email" placeholder="Email" required></div>
+          <div class="form-group"><input id="regPassword" type="password" name="password" placeholder="Пароль" required></div>
+          <div class="form-group"><input id="regConfirm" type="password" name="confirm_password" placeholder="Повторите пароль" required></div>
+          <div style="display:flex;gap:8px;">
+            <button type="submit" id="registerSubmit" class="btn primary">Зарегистрироваться</button>
+          </div>
+        </form>
+
+        <div style="margin-top:12px; color:var(--muted); font-size:13px;">
+          После успешного входа вы будете перенаправлены на главную страницу.
+        </div>
+      {{ end }}
+    </div>
+  </main>
+
+  <script>
+    window.__USER__ = window.__USER__ || {};
+  </script>
+
+  <script src="/static/auth/auth.js" defer></script>
+</body>
+</html>

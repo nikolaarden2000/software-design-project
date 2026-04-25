@@ -1,0 +1,18 @@
+
+    .auth-page-wrap {
+      max-width: 720px;
+      margin: 28px auto;
+      padding: 0 18px;
+    }
+    .auth-card {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+    .auth-header { font-size:20px; font-weight:700; margin-bottom:12px; }
+    #authMessage { margin-bottom:12px; font-size:14px; color:var(--muted); min-height:20px; }
+    .auth-actions { display:flex; gap:8px; margin-top:12px; }
+
+    .link-as-btn { display:inline-block; padding:8px 12px; border-radius:10px; border:1px solid rgba(15,23,42,0.06); background:white; text-decoration:none; color:inherit; text-align:center; }
+    .link-as-btn.primary { background:var(--accent); color:var(--accent-contrast); border-color:transparent; }
