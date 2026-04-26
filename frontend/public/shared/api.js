@@ -36,14 +36,14 @@
 
   async function mockRequest(path, options = {}) {
     await new Promise(resolve => setTimeout(resolve, 200));
-    if (path === '/api/me') {
-    return {
-        authenticated: true,
+if (path === '/api/me') {
+  return {
+    authenticated: true,
     user: {
-      id: 999,
-      username: 'Суперпользователь',
-      email: 'superuser@mail.com',
-      role: 'superuser'
+      id: 10,
+      username: 'Администратор ABC',
+      email: 'admin-abc@mail.com',
+      role: 'admin'
     }
   };
 }
@@ -75,6 +75,154 @@ if (path === '/api/superuser/companies') {
         locations_count: 1
       }
     ]
+  };
+}
+if (path === '/api/admin/locations') {
+  return {
+    items: [
+      {
+        id: 1,
+        company_id: 1,
+        company_name: 'ABC Coworking',
+        city: 'Москва',
+        address: 'Москва, Тверская 10',
+        lat: 55.7558,
+        lng: 37.6173,
+        timezone: 'Europe/Moscow',
+        rooms_count: 3
+      },
+      {
+        id: 2,
+        company_id: 1,
+        company_name: 'ABC Coworking',
+        city: 'Москва',
+        address: 'Москва, Арбат 15',
+        lat: 55.7522,
+        lng: 37.6156,
+        timezone: 'Europe/Moscow',
+        rooms_count: 1
+      }
+    ]
+  };
+}
+
+if (path.startsWith('/api/admin/rooms') && !path.includes('/submit')) {
+  if (options.method === 'POST') {
+    const payload = JSON.parse(options.body || '{}');
+
+    return {
+      id: Date.now(),
+      location_id: Number(payload.location_id),
+      title: payload.title,
+      price: Number(payload.price),
+      capacity: Number(payload.capacity),
+      status: 'draft',
+      rejection_reason: null,
+      created_at: new Date().toISOString()
+    };
+  }
+
+  return {
+    items: [
+      {
+        id: 1,
+        location_id: 1,
+        title: 'Переговорная на 8 человек',
+        price: 1500,
+        capacity: 8,
+        status: 'draft',
+        rejection_reason: null,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 2,
+        location_id: 1,
+        title: 'Большой конференц-зал',
+        price: 3500,
+        capacity: 20,
+        status: 'pending',
+        rejection_reason: null,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 3,
+        location_id: 2,
+        title: 'Малая переговорная',
+        price: 900,
+        capacity: 4,
+        status: 'rejected',
+        rejection_reason: 'Добавьте фотографии помещения',
+        created_at: new Date().toISOString()
+      }
+    ]
+  };
+}
+
+const submitAdminRoomMatch = path.match(/^\/api\/admin\/rooms\/(\d+)\/submit$/);
+if (submitAdminRoomMatch && options.method === 'POST') {
+  return {
+    id: Number(submitAdminRoomMatch[1]),
+    status: 'pending'
+  };
+}
+
+if (path.startsWith('/api/admin/bookings')) {
+  return {
+    items: [
+      {
+        id: 101,
+        room_id: 1,
+        room_title: 'Переговорная на 8 человек',
+        location_id: 1,
+        location_address: 'Москва, Тверская 10',
+        user_id: 5,
+        user_email: 'user@mail.com',
+        user_username: 'Иван',
+        date: getDatePlusDays(1),
+        start_time: '10:00',
+        end_time: '12:00',
+        total_price: 3000,
+        status: 'booked'
+      },
+      {
+        id: 102,
+        room_id: 2,
+        room_title: 'Большой конференц-зал',
+        location_id: 1,
+        location_address: 'Москва, Тверская 10',
+        user_id: 6,
+        user_email: 'petrov@mail.com',
+        user_username: 'Пётр',
+        date: getDatePlusDays(0),
+        start_time: '14:00',
+        end_time: '16:00',
+        total_price: 7000,
+        status: 'in_use'
+      },
+      {
+        id: 103,
+        room_id: 3,
+        room_title: 'Малая переговорная',
+        location_id: 2,
+        location_address: 'Москва, Арбат 15',
+        user_id: 7,
+        user_email: 'anna@mail.com',
+        user_username: 'Анна',
+        date: getDatePlusDays(-1),
+        start_time: '09:00',
+        end_time: '10:00',
+        total_price: 900,
+        status: 'finished'
+      }
+    ]
+  };
+}
+
+const cancelAdminBookingMatch = path.match(/^\/api\/admin\/bookings\/(\d+)\/cancel$/);
+if (cancelAdminBookingMatch && options.method === 'POST') {
+  return {
+    id: Number(cancelAdminBookingMatch[1]),
+    status: 'canceled'
   };
 }
 
@@ -520,6 +668,52 @@ function rejectRoom(roomId, reason) {
     body: JSON.stringify({ reason })
   });
 }
+function getAdminLocations() {
+  return apiRequest('/api/admin/locations');
+}
+
+function getAdminRooms(params = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return apiRequest(`/api/admin/rooms${qs ? `?${qs}` : ''}`);
+}
+
+function getAdminRoom(id) {
+  return apiRequest(`/api/admin/rooms/${encodeURIComponent(id)}`);
+}
+
+function createAdminRoom(payload) {
+  return apiRequest('/api/admin/rooms', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+function updateAdminRoom(id, payload) {
+  return apiRequest(`/api/admin/rooms/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload)
+  });
+}
+
+function submitRoomForModeration(id) {
+  return apiRequest(`/api/admin/rooms/${encodeURIComponent(id)}/submit`, {
+    method: 'POST'
+  });
+}
+
+function getAdminBookings(params = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return apiRequest(`/api/admin/bookings${qs ? `?${qs}` : ''}`);
+}
+
+function cancelAdminBooking(id, reason) {
+  return apiRequest(`/api/admin/bookings/${encodeURIComponent(id)}/cancel`, {
+    method: 'POST',
+    body: JSON.stringify({
+      reason
+    })
+  });
+}
 
 window.Api = {
   apiRequest,
@@ -544,6 +738,15 @@ window.Api = {
   assignAdminToLocation,
   getModerationRooms,
   approveRoom,
-  rejectRoom
+  rejectRoom,
+
+  getAdminLocations,
+  getAdminRooms,
+  getAdminRoom,
+  createAdminRoom,
+  updateAdminRoom,
+  submitRoomForModeration,
+  getAdminBookings,
+  cancelAdminBooking
 };
 })();

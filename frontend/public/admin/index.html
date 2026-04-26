@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Админ-панель — Своя Бронь</title>
+
+  <link rel="stylesheet" href="/home/topbar.css">
+  <link rel="stylesheet" href="/admin/admin.css">
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="topbar__left">
+      <a href="/" class="brand">Своя Бронь</a>
+    </div>
+
+    <div class="topbar__center">
+      <span class="page-title">Панель администратора</span>
+    </div>
+
+    <div class="topbar__right">
+      <button id="logoutBtn" class="auth-btn">Выйти</button>
+    </div>
+  </header>
+
+  <main class="admin-container">
+    <section id="accessDenied" class="access-denied hidden">
+      <h2>Доступ запрещён</h2>
+      <p>Эта страница доступна только администраторам локаций.</p>
+      <a href="/" class="btn">На главную</a>
+    </section>
+
+    <section id="adminContent" class="hidden">
+      <div class="dashboard-header">
+        <div>
+          <h1>Управление локациями и помещениями</h1>
+          <p>Здесь администратор может добавлять помещения, отправлять их на модерацию и смотреть бронирования.</p>
+        </div>
+      </div>
+
+      <div class="dashboard-grid">
+        <section class="panel">
+          <h2>Мои локации</h2>
+          <div id="locationsList" class="list"></div>
+        </section>
+
+        <section class="panel">
+          <h2>Добавить помещение</h2>
+
+          <form id="roomForm" class="form">
+            <select id="roomLocation" required>
+              <option value="">Выберите локацию</option>
+            </select>
+
+            <input id="roomTitle" type="text" placeholder="Название помещения" required />
+
+            <textarea id="roomDescription" placeholder="Описание помещения" required></textarea>
+
+            <input id="roomPrice" type="number" min="1" step="1" placeholder="Цена за час" required />
+
+            <input id="roomCapacity" type="number" min="1" step="1" placeholder="Вместимость" required />
+
+            <div class="form-row">
+              <div>
+                <label for="roomAvailableFrom">Доступно с</label>
+                <input id="roomAvailableFrom" type="time" value="09:00" required />
+              </div>
+
+              <div>
+                <label for="roomAvailableTo">Доступно до</label>
+                <input id="roomAvailableTo" type="time" value="21:00" required />
+              </div>
+            </div>
+
+            <textarea id="roomImages" placeholder="URL изображений через запятую"></textarea>
+
+            <button type="submit" class="btn primary">Создать помещение</button>
+          </form>
+        </section>
+
+        <section class="panel panel-wide">
+          <div class="panel-header">
+            <h2>Мои помещения</h2>
+
+            <div class="filters-row">
+              <select id="roomsLocationFilter">
+                <option value="">Все локации</option>
+              </select>
+
+              <select id="roomsStatusFilter">
+                <option value="">Все статусы</option>
+                <option value="draft">Черновик</option>
+                <option value="pending">На модерации</option>
+                <option value="published">Опубликовано</option>
+                <option value="rejected">Отклонено</option>
+                <option value="archived">Архивировано</option>
+              </select>
+
+              <button id="reloadRoomsBtn" class="btn">Обновить</button>
+            </div>
+          </div>
+
+          <div id="roomsList" class="rooms-list"></div>
+        </section>
+
+        <section class="panel panel-wide">
+          <div class="panel-header">
+            <h2>Бронирования</h2>
+
+            <div class="filters-row">
+              <select id="bookingsLocationFilter">
+                <option value="">Все локации</option>
+              </select>
+
+              <select id="bookingsStatusFilter">
+                <option value="">Все статусы</option>
+                <option value="booked">Забронировано</option>
+                <option value="in_use">Используется</option>
+                <option value="finished">Завершено</option>
+                <option value="canceled">Отменено</option>
+              </select>
+
+              <button id="reloadBookingsBtn" class="btn">Обновить</button>
+            </div>
+          </div>
+
+          <div id="bookingsList" class="bookings-list"></div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script src="/shared/api.js" defer></script>
+  <script src="/admin/admin.js" defer></script>
+</body>
+</html>
