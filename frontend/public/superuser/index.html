@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Панель платформы — Своя Бронь</title>
+
+  <link rel="stylesheet" href="/home/topbar.css">
+  <link rel="stylesheet" href="/superuser/superuser.css">
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="topbar__left">
+      <a href="/" class="brand">Своя Бронь</a>
+    </div>
+
+    <div class="topbar__center">
+      <span class="page-title">Панель суперпользователя</span>
+    </div>
+
+    <div class="topbar__right">
+      <button id="logoutBtn" class="auth-btn">Выйти</button>
+    </div>
+  </header>
+
+  <main class="superuser-container">
+    <section id="accessDenied" class="access-denied hidden">
+      <h2>Доступ запрещён</h2>
+      <p>Эта страница доступна только суперпользователю платформы.</p>
+      <a href="/" class="btn">На главную</a>
+    </section>
+
+    <section id="superuserContent" class="hidden">
+      <div class="dashboard-header">
+        <div>
+          <h1>Управление платформой</h1>
+          <p>Создание компаний, локаций, администраторов и модерация помещений.</p>
+        </div>
+      </div>
+
+      <div class="dashboard-grid">
+        <section class="panel">
+          <h2>Компании</h2>
+
+          <form id="companyForm" class="form">
+            <input id="companyName" type="text" placeholder="Название компании" required />
+            <textarea id="companyDescription" placeholder="Описание компании"></textarea>
+            <button type="submit" class="btn primary">Создать компанию</button>
+          </form>
+
+          <div id="companiesList" class="list"></div>
+        </section>
+
+        <section class="panel">
+          <h2>Локации</h2>
+
+          <form id="locationForm" class="form">
+            <select id="locationCompany" required>
+              <option value="">Выберите компанию</option>
+            </select>
+
+            <input id="locationCity" type="text" placeholder="Город" required />
+            <input id="locationAddress" type="text" placeholder="Адрес" required />
+            <input id="locationLat" type="number" step="any" placeholder="Широта" required />
+            <input id="locationLng" type="number" step="any" placeholder="Долгота" required />
+            <input id="locationTimezone" type="text" value="Europe/Moscow" placeholder="Таймзона" required />
+
+            <button type="submit" class="btn primary">Создать локацию</button>
+          </form>
+
+          <div id="locationsList" class="list"></div>
+        </section>
+
+        <section class="panel">
+          <h2>Администраторы</h2>
+
+          <form id="adminForm" class="form">
+            <input id="adminUsername" type="text" placeholder="Имя администратора" required />
+            <input id="adminEmail" type="email" placeholder="Email" required />
+            <input id="adminPassword" type="password" placeholder="Пароль" required />
+
+            <select id="adminLocation" required>
+              <option value="">Выберите локацию</option>
+            </select>
+
+            <button type="submit" class="btn primary">Создать администратора</button>
+          </form>
+
+          <div id="adminsList" class="list"></div>
+        </section>
+
+        <section class="panel panel-wide">
+          <h2>Модерация помещений</h2>
+          <div id="moderationList" class="moderation-list"></div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script src="/shared/api.js" defer></script>
+  <script src="/superuser/superuser.js" defer></script>
+</body>
+</html>

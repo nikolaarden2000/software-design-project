@@ -36,18 +36,179 @@
 
   async function mockRequest(path, options = {}) {
     await new Promise(resolve => setTimeout(resolve, 200));
-
     if (path === '/api/me') {
-      return {
+    return {
         authenticated: true,
-        user: {
-          id: 1,
-          username: 'Тестовый пользователь',
-          email: 'test@mail.com',
-          role: 'user'
-        }
-      };
+    user: {
+      id: 999,
+      username: 'Суперпользователь',
+      email: 'superuser@mail.com',
+      role: 'superuser'
     }
+  };
+}
+
+if (path === '/api/superuser/companies') {
+  if (options.method === 'POST') {
+    const payload = JSON.parse(options.body || '{}');
+
+    return {
+      id: Date.now(),
+      name: payload.name,
+      description: payload.description || '',
+      locations_count: 0
+    };
+  }
+
+  return {
+    items: [
+      {
+        id: 1,
+        name: 'ABC Coworking',
+        description: 'Сеть коворкингов',
+        locations_count: 2
+      },
+      {
+        id: 2,
+        name: 'Office Rent',
+        description: 'Аренда офисных пространств',
+        locations_count: 1
+      }
+    ]
+  };
+}
+
+if (path.startsWith('/api/superuser/locations')) {
+  if (options.method === 'POST') {
+    const payload = JSON.parse(options.body || '{}');
+
+    return {
+      id: Date.now(),
+      company_id: Number(payload.company_id),
+      company_name: 'Новая компания',
+      city: payload.city,
+      address: payload.address,
+      lat: Number(payload.lat),
+      lng: Number(payload.lng),
+      timezone: payload.timezone
+    };
+  }
+
+  return {
+    items: [
+      {
+        id: 1,
+        company_id: 1,
+        company_name: 'ABC Coworking',
+        city: 'Москва',
+        address: 'Москва, Тверская 10',
+        lat: 55.7558,
+        lng: 37.6173,
+        timezone: 'Europe/Moscow'
+      },
+      {
+        id: 2,
+        company_id: 2,
+        company_name: 'Office Rent',
+        city: 'Санкт-Петербург',
+        address: 'Невский проспект 20',
+        lat: 59.9343,
+        lng: 30.3351,
+        timezone: 'Europe/Moscow'
+      }
+    ]
+  };
+}
+
+if (path === '/api/superuser/admins') {
+  if (options.method === 'POST') {
+    const payload = JSON.parse(options.body || '{}');
+
+    return {
+      id: Date.now(),
+      username: payload.username,
+      email: payload.email,
+      role: 'admin',
+      locations: []
+    };
+  }
+
+  return {
+    items: [
+      {
+        id: 10,
+        username: 'Администратор ABC',
+        email: 'admin-abc@mail.com',
+        role: 'admin',
+        locations: [
+          {
+            id: 1,
+            address: 'Москва, Тверская 10',
+            company_name: 'ABC Coworking'
+          }
+        ]
+      }
+    ]
+  };
+}
+
+const assignMatch = path.match(/^\/api\/superuser\/admins\/(\d+)\/locations$/);
+if (assignMatch && options.method === 'POST') {
+  const payload = JSON.parse(options.body || '{}');
+
+  return {
+    admin_id: Number(assignMatch[1]),
+    location_id: Number(payload.location_id)
+  };
+}
+
+if (path === '/api/superuser/rooms/moderation') {
+  return {
+    items: [
+      {
+        id: 101,
+        location_id: 1,
+        company_name: 'ABC Coworking',
+        city: 'Москва',
+        address: 'Москва, Тверская 10',
+        title: 'Новая переговорная',
+        description: 'Комната с экраном, доской и кондиционером.',
+        price: 1600,
+        capacity: 8,
+        available_from: '09:00',
+        available_to: '21:00',
+        images: [
+          '/shared/placeholders/room-placeholder.svg'
+        ],
+        status: 'pending',
+        created_by: {
+          id: 10,
+          username: 'Администратор ABC',
+          email: 'admin-abc@mail.com'
+        }
+      }
+    ]
+  };
+}
+
+const approveMatch = path.match(/^\/api\/superuser\/rooms\/(\d+)\/approve$/);
+if (approveMatch && options.method === 'POST') {
+  return {
+    id: Number(approveMatch[1]),
+    status: 'published'
+  };
+}
+
+const rejectMatch = path.match(/^\/api\/superuser\/rooms\/(\d+)\/reject$/);
+if (rejectMatch && options.method === 'POST') {
+  const payload = JSON.parse(options.body || '{}');
+
+  return {
+    id: Number(rejectMatch[1]),
+    status: 'rejected',
+    rejection_reason: payload.reason || 'Причина не указана'
+  };
+}
 
     if (path.startsWith('/api/rooms/filters')) {
       return {
@@ -300,18 +461,89 @@
     });
   }
 
-  window.Api = {
-    apiRequest,
-    getMe,
-    registerUser,
-    loginUser,
-    logoutUser,
-    getRoomFilters,
-    getRooms,
-    getRoom,
-    getRoomAvailability,
-    createBooking,
-    getMyBookings,
-    cancelBooking
-  };
+  function getCompanies() {
+  return apiRequest('/api/superuser/companies');
+}
+
+function createCompany(payload) {
+  return apiRequest('/api/superuser/companies', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+function getLocations(params = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return apiRequest(`/api/superuser/locations${qs ? `?${qs}` : ''}`);
+}
+
+function createLocation(payload) {
+  return apiRequest('/api/superuser/locations', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+function getAdmins() {
+  return apiRequest('/api/superuser/admins');
+}
+
+function createAdmin(payload) {
+  return apiRequest('/api/superuser/admins', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+function assignAdminToLocation(adminId, locationId) {
+  return apiRequest(`/api/superuser/admins/${encodeURIComponent(adminId)}/locations`, {
+    method: 'POST',
+    body: JSON.stringify({
+      location_id: Number(locationId)
+    })
+  });
+}
+
+function getModerationRooms() {
+  return apiRequest('/api/superuser/rooms/moderation');
+}
+
+function approveRoom(roomId) {
+  return apiRequest(`/api/superuser/rooms/${encodeURIComponent(roomId)}/approve`, {
+    method: 'POST'
+  });
+}
+
+function rejectRoom(roomId, reason) {
+  return apiRequest(`/api/superuser/rooms/${encodeURIComponent(roomId)}/reject`, {
+    method: 'POST',
+    body: JSON.stringify({ reason })
+  });
+}
+
+window.Api = {
+  apiRequest,
+  getMe,
+  registerUser,
+  loginUser,
+  logoutUser,
+  getRoomFilters,
+  getRooms,
+  getRoom,
+  getRoomAvailability,
+  createBooking,
+  getMyBookings,
+  cancelBooking,
+
+  getCompanies,
+  createCompany,
+  getLocations,
+  createLocation,
+  getAdmins,
+  createAdmin,
+  assignAdminToLocation,
+  getModerationRooms,
+  approveRoom,
+  rejectRoom
+};
 })();

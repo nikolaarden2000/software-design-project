@@ -14,7 +14,7 @@
 
   let city = document.body.dataset.initialCity || 'Москва';
   let isAuthenticated = false;
-
+  let currentUserRole = null;
   let allItems = [];
   let allCompanies = [];
 
@@ -60,12 +60,28 @@
   }
 
   function bindEvents() {
-    if (authBtn) {
-      authBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        navigate(isAuthenticated ? '/me' : '/auth');
-      });
-    }
+      if (authBtn) {
+        authBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+
+          if (!isAuthenticated) {
+            navigate('/auth');
+            return;
+          }
+
+          if (currentUserRole === 'superuser') {
+            navigate('/superuser');
+            return;
+          }
+
+          if (currentUserRole === 'admin') {
+            navigate('/admin');
+            return;
+          }
+
+          navigate('/me');
+        });
+      }
 
     if (brandLink) {
       brandLink.addEventListener('click', (e) => {
@@ -234,23 +250,37 @@
 
   async function loadCurrentUser() {
     try {
-      const result = await window.Api.getMe();
-      isAuthenticated = !!result?.authenticated;
+        const result = await window.Api.getMe();
 
-      if (authBtn) {
-        authBtn.dataset.auth = isAuthenticated ? '1' : '0';
-        authBtn.textContent = isAuthenticated ? 'Кабинет' : 'Войти';
+        isAuthenticated = !!result?.authenticated;
+        currentUserRole = result?.user?.role || null;
 
-        if (result?.user?.username) {
-          authBtn.dataset.username = result.user.username;
+        if (authBtn) {
+          authBtn.dataset.auth = isAuthenticated ? '1' : '0';
+          authBtn.dataset.role = currentUserRole || '';
+
+          if (!isAuthenticated) {
+            authBtn.textContent = 'Войти';
+          } else if (currentUserRole === 'superuser') {
+            authBtn.textContent = 'Панель платформы';
+          } else if (currentUserRole === 'admin') {
+            authBtn.textContent = 'Админ-панель';
+          } else {
+            authBtn.textContent = 'Кабинет';
+          }
+
+          if (result?.user?.username) {
+            authBtn.dataset.username = result.user.username;
+          }
         }
-      }
     } catch (err) {
       console.warn('Не удалось получить текущего пользователя:', err);
       isAuthenticated = false;
+      currentUserRole = null;
 
       if (authBtn) {
         authBtn.dataset.auth = '0';
+        authBtn.dataset.role = '';
         authBtn.textContent = 'Войти';
       }
     }
