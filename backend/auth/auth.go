@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nikolaarden2000/software-design-project/backend/models"
+	"github.com/nikolaarden2000/software-design-project/backend/users"
 	"golang.org/x/crypto/argon2"
 )
 
@@ -63,9 +63,9 @@ func validatePassword(password string) error {
 
 type UserRepo interface {
 	CreateUser(ctx context.Context, username, email, passwordHash string) (int, error)
-	GetUserByEmail(ctx context.Context, email string) (*models.User, error)
+	GetUserByEmail(ctx context.Context, email string) (*users.User, error)
 	IsEmailTaken(ctx context.Context, email string) (bool, error)
-	GetUserByID(ctx context.Context, id int) (*models.User, error)
+	GetUserByID(ctx context.Context, id int) (*users.User, error)
 }
 
 type AuthService struct {
@@ -156,36 +156,37 @@ func (s *AuthService) Register(ctx context.Context, username, email, password st
 	return id, nil
 }
 
-func (s *AuthService) Login(ctx context.Context, email, password string, w http.ResponseWriter) (string, error) {
+func (s *AuthService) Login(ctx context.Context, email, password string, w http.ResponseWriter) (*users.User, error) {
 	email = strings.TrimSpace(email)
 	if email == "" {
-		return "", ErrEmptyEmail
+		return nil, ErrEmptyEmail
 	}
 	if password == "" {
-		return "", ErrInvalidCredentials
+		return nil, ErrInvalidCredentials
 	}
 
 	u, err := s.userRepo.GetUserByEmail(ctx, email)
 	if err != nil {
-		return "", fmt.Errorf("auth: fetching user: %w", err)
+		return nil, fmt.Errorf("auth: fetching user: %w", err)
 	}
 
 	ok, err := verifyPassword(password, u.Password)
 	if err != nil {
-		return "", fmt.Errorf("auth: verifying password: %w", err)
+		return nil, fmt.Errorf("auth: verifying password: %w", err)
 	}
 	if !ok {
-		return "", ErrInvalidCredentials
+		return nil, ErrInvalidCredentials
 	}
 
 	sessionID, err := s.sessionMgr.Create(u.ID)
 	if err != nil {
-		return "", fmt.Errorf("auth: creating session: %w", err)
+		return nil, fmt.Errorf("auth: creating session: %w", err)
 	}
 
 	http.SetCookie(w, s.newCookie(sessionID, int(s.sessionMgr.ttl.Seconds())))
 	log.Printf("[auth] user logged in: id=%d email=%s", u.ID, u.Email)
-	return sessionID, nil
+
+	return u, nil
 }
 
 func (s *AuthService) Logout(w http.ResponseWriter, r *http.Request) {
@@ -216,7 +217,7 @@ func (s *AuthService) AuthMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func (s *AuthService) GetUserByID(ctx context.Context, id int) (*models.User, error) {
+func (s *AuthService) GetUserByID(ctx context.Context, id int) (*users.User, error) {
 	return s.userRepo.GetUserByID(ctx, id)
 }
 

@@ -1,4 +1,4 @@
-package db
+package bookings
 
 import (
 	"context"
@@ -9,11 +9,26 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/nikolaarden2000/software-design-project/backend/db"
 	pgxmock "github.com/pashagolub/pgxmock/v2"
 )
 
-func newBookingRepo(mock pgxmock.PgxPoolIface) *BookingRepo {
-	return NewBookingRepo(mock)
+func newMock(t *testing.T) pgxmock.PgxPoolIface {
+	t.Helper()
+	mock, err := pgxmock.NewPool()
+	if err != nil {
+		t.Fatalf("pgxmock.NewPool: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := mock.ExpectationsWereMet(); err != nil {
+			t.Errorf("unfulfilled mock expectations: %v", err)
+		}
+	})
+	return mock
+}
+
+func newBookingRepo(mock pgxmock.PgxPoolIface) *Repository {
+	return NewRepository(mock)
 }
 
 func fixed(hour int) time.Time {
@@ -83,8 +98,8 @@ func TestGetRoomAvailability_InvalidRoomID_ReturnsErrInvalidID(t *testing.T) {
 
 			_, err := newBookingRepo(mock).GetRoomAvailability(context.Background(), tc.id, 1, fixed(8))
 
-			if !errors.Is(err, ErrInvalidID) {
-				t.Errorf("expected ErrInvalidID, got: %v", err)
+			if !errors.Is(err, db.ErrInvalidID) {
+				t.Errorf("expected db.ErrInvalidID, got: %v", err)
 			}
 		})
 	}
@@ -98,8 +113,8 @@ func TestGetRoomAvailability_RoomNotFound_ReturnsErrNotFound(t *testing.T) {
 
 	_, err := newBookingRepo(mock).GetRoomAvailability(context.Background(), 99, 1, fixed(8))
 
-	if !errors.Is(err, ErrNotFound) {
-		t.Fatalf("expected ErrNotFound, got: %v", err)
+	if !errors.Is(err, db.ErrNotFound) {
+		t.Fatalf("expected db.ErrNotFound, got: %v", err)
 	}
 }
 
@@ -312,8 +327,8 @@ func TestCreateBooking_Conflict_ReturnsErrConflict(t *testing.T) {
 	_, err := newBookingRepo(mock).CreateBooking(context.Background(), 3, 5,
 		"2024-01-16", []string{"10:00"}, now)
 
-	if !errors.Is(err, ErrConflict) {
-		t.Fatalf("expected ErrConflict, got: %v", err)
+	if !errors.Is(err, db.ErrConflict) {
+		t.Fatalf("expected db.ErrConflict, got: %v", err)
 	}
 }
 
@@ -326,8 +341,8 @@ func TestCreateBooking_RoomNotFound_OnTimezoneQuery_ReturnsErrNotFound(t *testin
 	_, err := newBookingRepo(mock).CreateBooking(context.Background(), 3, 99,
 		"2024-01-16", []string{"10:00"}, fixed(8))
 
-	if !errors.Is(err, ErrNotFound) {
-		t.Fatalf("expected ErrNotFound, got: %v", err)
+	if !errors.Is(err, db.ErrNotFound) {
+		t.Fatalf("expected db.ErrNotFound, got: %v", err)
 	}
 }
 
@@ -355,8 +370,8 @@ func TestCreateBooking_PastStartTime_ReturnsErrInvalidArgument(t *testing.T) {
 	_, err := newBookingRepo(mock).CreateBooking(context.Background(), 3, 5,
 		"2024-01-15", []string{"10:00"}, now)
 
-	if !errors.Is(err, ErrInvalidArgument) {
-		t.Fatalf("expected ErrInvalidArgument, got: %v", err)
+	if !errors.Is(err, db.ErrInvalidArgument) {
+		t.Fatalf("expected db.ErrInvalidArgument, got: %v", err)
 	}
 }
 
@@ -391,11 +406,11 @@ func TestCreateBooking_InputValidation_NoDBCalls(t *testing.T) {
 		checkFn func(error) bool
 	}{
 		{"zero userID", 0, 5, "2024-01-16", []string{"10:00"},
-			func(e error) bool { return errors.Is(e, ErrInvalidID) }},
+			func(e error) bool { return errors.Is(e, db.ErrInvalidID) }},
 		{"negative roomID", 3, -1, "2024-01-16", []string{"10:00"},
-			func(e error) bool { return errors.Is(e, ErrInvalidID) }},
+			func(e error) bool { return errors.Is(e, db.ErrInvalidID) }},
 		{"empty slots", 3, 5, "2024-01-16", []string{},
-			func(e error) bool { return errors.Is(e, ErrInvalidArgument) }},
+			func(e error) bool { return errors.Is(e, db.ErrInvalidArgument) }},
 		{"bad slot format", 3, 5, "2024-01-16", []string{"25:99"},
 			func(e error) bool { return e != nil }},
 		{"non-consecutive", 3, 5, "2024-01-16", []string{"10:00", "12:00"},
@@ -457,8 +472,8 @@ func TestCancelBooking_NonCancellableStates_ReturnErrConflict(t *testing.T) {
 				WillReturnRows(pgxmock.NewRows([]string{"status", "start_time", "end_time"}).
 					AddRow(tc.dbStatus, tc.start, tc.end))
 
-			if err := newBookingRepo(mock).CancelBooking(context.Background(), 1, 10, now); !errors.Is(err, ErrConflict) {
-				t.Errorf("[%s] expected ErrConflict, got: %v", tc.name, err)
+			if err := newBookingRepo(mock).CancelBooking(context.Background(), 1, 10, now); !errors.Is(err, db.ErrConflict) {
+				t.Errorf("[%s] expected db.ErrConflict, got: %v", tc.name, err)
 			}
 		})
 	}
@@ -470,8 +485,8 @@ func TestCancelBooking_NotFound_ReturnsErrNotFound(t *testing.T) {
 		WithArgs(999, 10).
 		WillReturnRows(pgxmock.NewRows([]string{"status", "start_time", "end_time"}))
 
-	if err := newBookingRepo(mock).CancelBooking(context.Background(), 999, 10, fixed(8)); !errors.Is(err, ErrNotFound) {
-		t.Fatalf("expected ErrNotFound, got: %v", err)
+	if err := newBookingRepo(mock).CancelBooking(context.Background(), 999, 10, fixed(8)); !errors.Is(err, db.ErrNotFound) {
+		t.Fatalf("expected db.ErrNotFound, got: %v", err)
 	}
 }
 
@@ -497,8 +512,8 @@ func TestCancelBooking_InvalidIDs_ReturnErrInvalidID(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			mock := newMock(t)
-			if err := newBookingRepo(mock).CancelBooking(context.Background(), tc.bid, tc.uid, fixed(8)); !errors.Is(err, ErrInvalidID) {
-				t.Errorf("expected ErrInvalidID, got: %v", err)
+			if err := newBookingRepo(mock).CancelBooking(context.Background(), tc.bid, tc.uid, fixed(8)); !errors.Is(err, db.ErrInvalidID) {
+				t.Errorf("expected db.ErrInvalidID, got: %v", err)
 			}
 		})
 	}
@@ -585,8 +600,8 @@ func TestGetUserBookings_InvalidTimezoneInRow_ReturnsError(t *testing.T) {
 func TestGetUserBookings_InvalidUserID_ReturnsErrInvalidID(t *testing.T) {
 	for _, id := range []int{0, -1} {
 		mock := newMock(t)
-		if _, err := newBookingRepo(mock).GetUserBookings(context.Background(), id, fixed(8)); !errors.Is(err, ErrInvalidID) {
-			t.Errorf("id=%d: expected ErrInvalidID, got: %v", id, err)
+		if _, err := newBookingRepo(mock).GetUserBookings(context.Background(), id, fixed(8)); !errors.Is(err, db.ErrInvalidID) {
+			t.Errorf("id=%d: expected db.ErrInvalidID, got: %v", id, err)
 		}
 	}
 }

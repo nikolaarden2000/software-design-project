@@ -1,4 +1,4 @@
-package db
+package users
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/nikolaarden2000/software-design-project/backend/db"
 	pgxmock "github.com/pashagolub/pgxmock/v2"
 )
 
@@ -24,8 +25,8 @@ func newMock(t *testing.T) pgxmock.PgxPoolIface {
 	return mock
 }
 
-func newUserRepo(mock pgxmock.PgxPoolIface) *UserRepo {
-	return NewUserRepo(mock)
+func newUserRepo(mock pgxmock.PgxPoolIface) *Repository {
+	return NewRepository(mock)
 }
 
 // CreateUser
@@ -53,8 +54,8 @@ func TestCreateUser_DuplicateEmail_ReturnsErrEmailTaken(t *testing.T) {
 
 	_, err := newUserRepo(mock).CreateUser(context.Background(), "bob", "taken@example.com", "hashed-pwd")
 
-	if !errors.Is(err, ErrEmailTaken) {
-		t.Fatalf("expected ErrEmailTaken, got: %v", err)
+	if !errors.Is(err, db.ErrEmailTaken) {
+		t.Fatalf("expected db.ErrEmailTaken, got: %v", err)
 	}
 }
 
@@ -99,8 +100,8 @@ func TestGetUserByEmail_NotFound_ReturnsErrNotFound(t *testing.T) {
 
 	_, err := newUserRepo(mock).GetUserByEmail(context.Background(), "ghost@example.com")
 
-	if !errors.Is(err, ErrNotFound) {
-		t.Fatalf("expected ErrNotFound, got: %v", err)
+	if !errors.Is(err, db.ErrNotFound) {
+		t.Fatalf("expected db.ErrNotFound, got: %v", err)
 	}
 }
 
@@ -147,8 +148,8 @@ func TestGetUserByID_NotFound_ReturnsErrNotFound(t *testing.T) {
 
 	_, err := newUserRepo(mock).GetUserByID(context.Background(), 123)
 
-	if !errors.Is(err, ErrNotFound) {
-		t.Fatalf("expected ErrNotFound, got: %v", err)
+	if !errors.Is(err, db.ErrNotFound) {
+		t.Fatalf("expected db.ErrNotFound, got: %v", err)
 	}
 }
 
@@ -181,8 +182,8 @@ func TestGetUserByID_BoundaryIDs_ReturnErrInvalidID(t *testing.T) {
 
 			_, err := newUserRepo(mock).GetUserByID(context.Background(), tc.id)
 
-			if !errors.Is(err, ErrInvalidID) {
-				t.Errorf("[%s] expected ErrInvalidID, got: %v", tc.name, err)
+			if !errors.Is(err, db.ErrInvalidID) {
+				t.Errorf("[%s] expected db.ErrInvalidID, got: %v", tc.name, err)
 			}
 		})
 	}

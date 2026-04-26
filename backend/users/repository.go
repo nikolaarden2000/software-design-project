@@ -1,11 +1,12 @@
-package db
+package users
 
 import (
 	"context"
 	"errors"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/nikolaarden2000/software-design-project/backend/models"
+
+	"github.com/nikolaarden2000/software-design-project/backend/db"
 )
 
 const (
@@ -29,56 +30,59 @@ const (
 		SELECT EXISTS (SELECT 1 FROM users WHERE email = $1)`
 )
 
-type UserRepo struct {
-	q Querier
+type Repository struct {
+	q db.Querier
 }
 
-func NewUserRepo(q Querier) *UserRepo {
-	return &UserRepo{q: q}
+func NewRepository(q db.Querier) *Repository {
+	return &Repository{q: q}
 }
 
-func (r *UserRepo) CreateUser(ctx context.Context, username, email, hashedPassword string) (int, error) {
+func (r *Repository) CreateUser(ctx context.Context, username, email, hashedPassword string) (int, error) {
 	var id int
 	err := r.q.QueryRow(ctx, queryCreateUser, username, email, hashedPassword).Scan(&id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return 0, ErrEmailTaken
+			return 0, db.ErrEmailTaken
 		}
 		return 0, err
 	}
 	return id, nil
 }
 
-func (r *UserRepo) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
+func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*User, error) {
 	row := r.q.QueryRow(ctx, queryGetUserByEmail, email)
 	return scanUser(row)
 }
 
-func (r *UserRepo) GetUserByID(ctx context.Context, id int) (*models.User, error) {
+func (r *Repository) GetUserByID(ctx context.Context, id int) (*User, error) {
 	if id <= 0 {
-		return nil, ErrInvalidID
+		return nil, db.ErrInvalidID
 	}
+
 	row := r.q.QueryRow(ctx, queryGetUserByID, id)
 	return scanUser(row)
 }
 
-func scanUser(row pgx.Row) (*models.User, error) {
-	var u models.User
-
-	if err := row.Scan(&u.ID, &u.Username, &u.Email, &u.Password, &u.Role); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrNotFound
-		}
-		return nil, err
-	}
-	return &u, nil
-}
-
-func (r *UserRepo) IsEmailTaken(ctx context.Context, email string) (bool, error) {
+func (r *Repository) IsEmailTaken(ctx context.Context, email string) (bool, error) {
 	var exists bool
 
 	if err := r.q.QueryRow(ctx, queryIsEmailTaken, email).Scan(&exists); err != nil {
 		return false, err
 	}
+
 	return exists, nil
+}
+
+func scanUser(row pgx.Row) (*User, error) {
+	var u User
+
+	if err := row.Scan(&u.ID, &u.Username, &u.Email, &u.Password, &u.Role); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, db.ErrNotFound
+		}
+		return nil, err
+	}
+
+	return &u, nil
 }

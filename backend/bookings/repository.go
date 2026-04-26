@@ -1,4 +1,4 @@
-package db
+package bookings
 
 import (
 	"context"
@@ -9,7 +9,9 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/nikolaarden2000/software-design-project/backend/models"
+
+	"github.com/nikolaarden2000/software-design-project/backend/db"
+	"github.com/nikolaarden2000/software-design-project/backend/rooms"
 )
 
 const (
@@ -35,7 +37,7 @@ const (
 
 	queryCreateBookingCTE = `
 		WITH room_price AS (
-				SELECT price FROM rooms WHERE id = $2
+			SELECT price FROM rooms WHERE id = $2
 		)
 		INSERT INTO bookings (user_id, room_id, start_time, end_time, total_price)
 		SELECT $1, $2, $3, $4, price * $5
@@ -69,12 +71,17 @@ const (
 		WHERE id = $1 AND user_id = $2`
 )
 
-type BookingRepo struct {
-	q Querier
+type Repository struct {
+	q db.Querier
 }
 
-func NewBookingRepo(q Querier) *BookingRepo {
-	return &BookingRepo{q: q}
+func NewRepository(q db.Querier) *Repository {
+	return &Repository{q: q}
+}
+
+type booking struct {
+	Start time.Time
+	End   time.Time
 }
 
 func loadLocation(name string) (*time.Location, error) {
@@ -85,10 +92,6 @@ func loadLocation(name string) (*time.Location, error) {
 	return loc, nil
 }
 
-type booking struct {
-	Start, End time.Time
-}
-
 func coalesceTime(t time.Time) time.Time {
 	if t.IsZero() {
 		return time.Now()
@@ -96,7 +99,7 @@ func coalesceTime(t time.Time) time.Time {
 	return t
 }
 
-func generateHourlyStots(winStart, winEnd time.Time) []time.Time {
+func generateHourlySlots(winStart, winEnd time.Time) []time.Time {
 	var slots []time.Time
 	for t := winStart; !t.Add(time.Hour).After(winEnd); t = t.Add(time.Hour) {
 		slots = append(slots, t)
@@ -104,20 +107,21 @@ func generateHourlyStots(winStart, winEnd time.Time) []time.Time {
 	return slots
 }
 
-func (r *BookingRepo) GetRoomAvailability(ctx context.Context, roomID, days int, now time.Time) ([]models.DateAvailability, error) {
+func (r *Repository) GetRoomAvailability(ctx context.Context, roomID, days int, now time.Time) ([]rooms.DateAvailability, error) {
 	if roomID <= 0 {
-		return nil, ErrInvalidID
+		return nil, db.ErrInvalidID
 	}
 	if days <= 0 {
 		days = 7
 	}
+
 	now = coalesceTime(now)
 
 	var availFrom, availTo time.Time
 	var tzName string
 	if err := r.q.QueryRow(ctx, queryGetRoomWindow, roomID).Scan(&availFrom, &availTo, &tzName); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrNotFound
+			return nil, db.ErrNotFound
 		}
 		return nil, fmt.Errorf("GetRoomAvailability: select room: %w", err)
 	}
@@ -137,23 +141,27 @@ func (r *BookingRepo) GetRoomAvailability(ctx context.Context, roomID, days int,
 	}
 	defer rows.Close()
 
-	bookings := make([]booking, 0)
+	existingBookings := make([]booking, 0)
 	for rows.Next() {
-		var s, e time.Time
-		if err := rows.Scan(&s, &e); err != nil {
+		var start, end time.Time
+		if err := rows.Scan(&start, &end); err != nil {
 			return nil, fmt.Errorf("GetRoomAvailability: scan booking: %w", err)
 		}
-		bookings = append(bookings, booking{s, e})
+		existingBookings = append(existingBookings, booking{
+			Start: start,
+			End:   end,
+		})
 	}
+
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("GetRoomAvailability: iterate bookings: %w", err)
 	}
 
-	sort.Slice(bookings, func(i, j int) bool {
-		return bookings[i].Start.Before(bookings[j].Start)
+	sort.Slice(existingBookings, func(i, j int) bool {
+		return existingBookings[i].Start.Before(existingBookings[j].Start)
 	})
 
-	results := make([]models.DateAvailability, 0, days)
+	results := make([]rooms.DateAvailability, 0, days)
 	for d := 0; d < days; d++ {
 		day := startDate.AddDate(0, 0, d)
 
@@ -161,27 +169,31 @@ func (r *BookingRepo) GetRoomAvailability(ctx context.Context, roomID, days int,
 		winEnd := time.Date(day.Year(), day.Month(), day.Day(), availTo.Hour(), availTo.Minute(), availTo.Second(), 0, loc)
 
 		availableTimes := make([]string, 0)
-		for _, slot := range generateHourlyStots(winStart, winEnd) {
+		for _, slot := range generateHourlySlots(winStart, winEnd) {
 			if !slot.After(now) {
 				continue
 			}
+
 			slotEnd := slot.Add(time.Hour)
 			overlaps := false
-			for _, b := range bookings {
+
+			for _, b := range existingBookings {
 				if !b.Start.Before(slotEnd) {
 					break
 				}
+
 				if b.End.After(slot) {
 					overlaps = true
 					break
 				}
 			}
+
 			if !overlaps {
 				availableTimes = append(availableTimes, slot.Format("15:04"))
 			}
 		}
 
-		results = append(results, models.DateAvailability{
+		results = append(results, rooms.DateAvailability{
 			Date:           day.Format("2006-01-02"),
 			AvailableTimes: availableTimes,
 		})
@@ -190,15 +202,15 @@ func (r *BookingRepo) GetRoomAvailability(ctx context.Context, roomID, days int,
 	return results, nil
 }
 
-func (r *BookingRepo) CreateBooking(ctx context.Context, userID, roomID int, date string, slots []string, now time.Time) (int, error) {
+func (r *Repository) CreateBooking(ctx context.Context, userID, roomID int, date string, slots []string, now time.Time) (int, error) {
 	if userID <= 0 || roomID <= 0 {
-		return 0, ErrInvalidID
+		return 0, db.ErrInvalidID
 	}
 
 	now = coalesceTime(now)
 
 	if len(slots) == 0 {
-		return 0, ErrInvalidArgument
+		return 0, db.ErrInvalidArgument
 	}
 
 	times := make([]time.Time, len(slots))
@@ -209,24 +221,26 @@ func (r *BookingRepo) CreateBooking(ctx context.Context, userID, roomID int, dat
 		}
 		times[i] = t
 	}
+
 	for i := 1; i < len(times); i++ {
 		if !times[i].Equal(times[i-1].Add(time.Hour)) {
-			return 0, fmt.Errorf("slots must be consecutive")
+			return 0, db.ErrNotConsecutiveSlots
 		}
 	}
 
 	day, err := time.Parse("2006-01-02", date)
 	if err != nil {
-		return 0, fmt.Errorf("invalid date: %v", err)
+		return 0, fmt.Errorf("invalid date: %w", err)
 	}
 
 	var tzName string
 	if err := r.q.QueryRow(ctx, queryGetRoomTimezone, roomID).Scan(&tzName); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return 0, ErrNotFound
+			return 0, db.ErrNotFound
 		}
 		return 0, fmt.Errorf("CreateBooking: fetch timezone: %w", err)
 	}
+
 	loc, err := loadLocation(tzName)
 	if err != nil {
 		return 0, fmt.Errorf("CreateBooking: %w", err)
@@ -236,28 +250,32 @@ func (r *BookingRepo) CreateBooking(ctx context.Context, userID, roomID int, dat
 	endTime := startTime.Add(time.Duration(len(slots)) * time.Hour)
 
 	if !startTime.After(now) {
-		return 0, ErrInvalidArgument
+		return 0, db.ErrInvalidArgument
 	}
 
 	var bookingID int
 	err = r.q.QueryRow(ctx, queryCreateBookingCTE, userID, roomID, startTime, endTime, len(slots)).Scan(&bookingID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return 0, ErrNotFound
+			return 0, db.ErrNotFound
 		}
+
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.ConstraintName == "bookings_no_overlap" {
-			return 0, ErrConflict
+			return 0, db.ErrConflict
 		}
+
 		return 0, err
 	}
+
 	return bookingID, nil
 }
 
-func (r *BookingRepo) GetUserBookings(ctx context.Context, userID int, now time.Time) ([]models.BookingHistoryItem, error) {
+func (r *Repository) GetUserBookings(ctx context.Context, userID int, now time.Time) ([]BookingHistoryItem, error) {
 	if userID <= 0 {
-		return nil, ErrInvalidID
+		return nil, db.ErrInvalidID
 	}
+
 	now = coalesceTime(now)
 
 	rows, err := r.q.Query(ctx, queryGetUserBookings, userID)
@@ -266,13 +284,23 @@ func (r *BookingRepo) GetUserBookings(ctx context.Context, userID int, now time.
 	}
 	defer rows.Close()
 
-	bookings := make([]models.BookingHistoryItem, 0)
+	result := make([]BookingHistoryItem, 0)
 	for rows.Next() {
-		var b models.BookingHistoryItem
+		var b BookingHistoryItem
 		var start, end time.Time
 		var tzName string
-		if err := rows.Scan(&b.ID, &b.RoomID, &b.ImageURL, &b.Title,
-			&start, &end, &b.TotalPrice, &b.Status, &tzName); err != nil {
+
+		if err := rows.Scan(
+			&b.ID,
+			&b.RoomID,
+			&b.ImageURL,
+			&b.Title,
+			&start,
+			&end,
+			&b.TotalPrice,
+			&b.Status,
+			&tzName,
+		); err != nil {
 			return nil, err
 		}
 
@@ -285,15 +313,18 @@ func (r *BookingRepo) GetUserBookings(ctx context.Context, userID int, now time.
 		b.StartTime = start.In(loc).Format("15:04")
 		b.EndTime = end.In(loc).Format("15:04")
 		b.Status = resolveStatus(b.Status, start, end, now)
-		bookings = append(bookings, b)
+
+		result = append(result, b)
 	}
-	return bookings, rows.Err()
+
+	return result, rows.Err()
 }
 
 func resolveStatus(baseStatus string, startTime, endTime, now time.Time) string {
 	if baseStatus == "canceled" {
 		return "canceled"
 	}
+
 	switch {
 	case now.Before(startTime):
 		return "booked"
@@ -304,9 +335,9 @@ func resolveStatus(baseStatus string, startTime, endTime, now time.Time) string 
 	}
 }
 
-func (r *BookingRepo) CancelBooking(ctx context.Context, bookingID, userID int, now time.Time) error {
+func (r *Repository) CancelBooking(ctx context.Context, bookingID, userID int, now time.Time) error {
 	if bookingID <= 0 || userID <= 0 {
-		return ErrInvalidID
+		return db.ErrInvalidID
 	}
 
 	now = coalesceTime(now)
@@ -317,13 +348,13 @@ func (r *BookingRepo) CancelBooking(ctx context.Context, bookingID, userID int, 
 		Scan(&status, &startTime, &endTime)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrNotFound
+			return db.ErrNotFound
 		}
 		return err
 	}
 
 	if resolved := resolveStatus(status, startTime, endTime, now); resolved != "booked" {
-		return ErrConflict
+		return db.ErrConflict
 	}
 
 	_, err = r.q.Exec(ctx, queryCancelBooking, bookingID, userID)

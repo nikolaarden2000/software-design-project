@@ -1,4 +1,4 @@
-package db
+package rooms
 
 import (
 	"context"
@@ -8,11 +8,26 @@ import (
 	"testing"
 	"time"
 
+	"github.com/nikolaarden2000/software-design-project/backend/db"
 	pgxmock "github.com/pashagolub/pgxmock/v2"
 )
 
-func newRoomRepo(mock pgxmock.PgxPoolIface) *RoomRepo {
-	return NewRoomRepo(mock)
+func newMock(t *testing.T) pgxmock.PgxPoolIface {
+	t.Helper()
+	mock, err := pgxmock.NewPool()
+	if err != nil {
+		t.Fatalf("pgxmock.NewPool: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := mock.ExpectationsWereMet(); err != nil {
+			t.Errorf("unfulfilled mock expectations: %v", err)
+		}
+	})
+	return mock
+}
+
+func newRoomRepo(mock pgxmock.PgxPoolIface) *Repository {
+	return NewRepository(mock)
 }
 
 var roomCols = []string{"id", "title", "company", "address", "capacity", "image_url", "price"}
@@ -134,8 +149,8 @@ func TestGetRoomsBatchByCity_NegativeLastID_ReturnsErrInvalidID(t *testing.T) {
 
 	_, err := newRoomRepo(mock).GetRoomsBatchByCity(context.Background(), -1, 10, "Moscow")
 
-	if !errors.Is(err, ErrInvalidID) {
-		t.Fatalf("expected ErrInvalidID, got: %v", err)
+	if !errors.Is(err, db.ErrInvalidID) {
+		t.Fatalf("expected db.ErrInvalidID, got: %v", err)
 	}
 }
 
@@ -154,8 +169,8 @@ func TestGetRoomsBatchByCity_InvalidLimit_ReturnsErrInvalidArgument(t *testing.T
 
 			_, err := newRoomRepo(mock).GetRoomsBatchByCity(context.Background(), 0, tc.limit, "Moscow")
 
-			if !errors.Is(err, ErrInvalidArgument) {
-				t.Errorf("[%s] expected ErrInvalidArgument, got: %v", tc.name, err)
+			if !errors.Is(err, db.ErrInvalidArgument) {
+				t.Errorf("[%s] expected db.ErrInvalidArgument, got: %v", tc.name, err)
 			}
 		})
 	}
@@ -275,8 +290,8 @@ func TestGetRoomPageData_NotFound_ReturnsErrNotFound(t *testing.T) {
 
 	_, err := newRoomRepo(mock).GetRoomPageData(context.Background(), 999)
 
-	if !errors.Is(err, ErrNotFound) {
-		t.Fatalf("expected ErrNotFound, got: %v", err)
+	if !errors.Is(err, db.ErrNotFound) {
+		t.Fatalf("expected db.ErrNotFound, got: %v", err)
 	}
 }
 
@@ -309,8 +324,8 @@ func TestGetRoomPageData_InvalidRoomID_ReturnsErrInvalidID(t *testing.T) {
 
 			_, err := newRoomRepo(mock).GetRoomPageData(context.Background(), tc.roomID)
 
-			if !errors.Is(err, ErrInvalidID) {
-				t.Errorf("[%s] expected ErrInvalidID, got: %v", tc.name, err)
+			if !errors.Is(err, db.ErrInvalidID) {
+				t.Errorf("[%s] expected db.ErrInvalidID, got: %v", tc.name, err)
 			}
 		})
 	}

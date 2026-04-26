@@ -10,16 +10,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nikolaarden2000/software-design-project/backend/models"
+	"github.com/nikolaarden2000/software-design-project/backend/users"
 )
 
 var errNotConfigured = errors.New("mock: method not configured")
 
 type mockRepo struct {
 	createUser     func(ctx context.Context, username, email, hash string) (int, error)
-	getUserByEmail func(ctx context.Context, email string) (*models.User, error)
+	getUserByEmail func(ctx context.Context, email string) (*users.User, error)
 	isEmailTaken   func(ctx context.Context, email string) (bool, error)
-	getUserByID    func(ctx context.Context, id int) (*models.User, error)
+	getUserByID    func(ctx context.Context, id int) (*users.User, error)
 }
 
 func (m *mockRepo) CreateUser(ctx context.Context, username, email, hash string) (int, error) {
@@ -29,7 +29,7 @@ func (m *mockRepo) CreateUser(ctx context.Context, username, email, hash string)
 	return 0, errNotConfigured
 }
 
-func (m *mockRepo) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
+func (m *mockRepo) GetUserByEmail(ctx context.Context, email string) (*users.User, error) {
 	if m.getUserByEmail != nil {
 		return m.getUserByEmail(ctx, email)
 	}
@@ -43,7 +43,7 @@ func (m *mockRepo) IsEmailTaken(ctx context.Context, email string) (bool, error)
 	return false, errNotConfigured
 }
 
-func (m *mockRepo) GetUserByID(ctx context.Context, id int) (*models.User, error) {
+func (m *mockRepo) GetUserByID(ctx context.Context, id int) (*users.User, error) {
 	if m.getUserByID != nil {
 		return m.getUserByID(ctx, id)
 	}
@@ -351,7 +351,7 @@ func TestLogin_InputValidation_NoDBCalls(t *testing.T) {
 func TestLogin_UserNotFound_PropagatesError(t *testing.T) {
 	dbErr := fmt.Errorf("user not found")
 	repo := &mockRepo{
-		getUserByEmail: func(_ context.Context, _ string) (*models.User, error) {
+		getUserByEmail: func(_ context.Context, _ string) (*users.User, error) {
 			return nil, dbErr
 		},
 	}
@@ -367,8 +367,8 @@ func TestLogin_UserNotFound_PropagatesError(t *testing.T) {
 func TestLogin_WrongPassword_ReturnsErrInvalidCredentials(t *testing.T) {
 	correctHash := mustHashPassword(t, "correct-password")
 	repo := &mockRepo{
-		getUserByEmail: func(_ context.Context, email string) (*models.User, error) {
-			return &models.User{ID: 1, Email: email, Password: correctHash}, nil
+		getUserByEmail: func(_ context.Context, email string) (*users.User, error) {
+			return &users.User{ID: 1, Email: email, Password: correctHash}, nil
 		},
 	}
 	svc := newTestAuthService(repo)
@@ -382,8 +382,8 @@ func TestLogin_WrongPassword_ReturnsErrInvalidCredentials(t *testing.T) {
 
 func TestLogin_CorruptedStoredHash_ReturnsError(t *testing.T) {
 	repo := &mockRepo{
-		getUserByEmail: func(_ context.Context, email string) (*models.User, error) {
-			return &models.User{ID: 1, Email: email, Password: "corrupted-hash"}, nil
+		getUserByEmail: func(_ context.Context, email string) (*users.User, error) {
+			return &users.User{ID: 1, Email: email, Password: "corrupted-hash"}, nil
 		},
 	}
 	svc := newTestAuthService(repo)
@@ -395,38 +395,65 @@ func TestLogin_CorruptedStoredHash_ReturnsError(t *testing.T) {
 	}
 }
 
-func TestLogin_Success_ReturnsSessionIDAndSetsCookie(t *testing.T) {
+func TestLogin_Success_ReturnsUserAndSetsCookie(t *testing.T) {
 	correctHash := mustHashPassword(t, "password1")
 	repo := &mockRepo{
-		getUserByEmail: func(_ context.Context, email string) (*models.User, error) {
-			return &models.User{ID: 7, Email: email, Password: correctHash}, nil
+		getUserByEmail: func(_ context.Context, email string) (*users.User, error) {
+			return &users.User{
+				ID:       7,
+				Username: "alice",
+				Email:    email,
+				Password: correctHash,
+				Role:     "user",
+			}, nil
 		},
 	}
 	svc := newTestAuthService(repo)
 	w := httptest.NewRecorder()
 
-	sessionID, err := svc.Login(context.Background(), "a@b.com", "password1", w)
+	u, err := svc.Login(context.Background(), "a@b.com", "password1", w)
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if sessionID == "" {
-		t.Error("expected non-empty sessionID")
+	if u == nil {
+		t.Fatal("expected user, got nil")
+	}
+	if u.ID != 7 {
+		t.Errorf("user id: got %d, want 7", u.ID)
+	}
+	if u.Email != "a@b.com" {
+		t.Errorf("user email: got %q, want a@b.com", u.Email)
+	}
+	if u.Username != "alice" {
+		t.Errorf("username: got %q, want alice", u.Username)
+	}
+	if u.Role != "user" {
+		t.Errorf("role: got %q, want user", u.Role)
 	}
 
 	cookies := w.Result().Cookies()
 	if len(cookies) != 1 {
 		t.Fatalf("expected 1 cookie, got %d", len(cookies))
 	}
+
 	c := cookies[0]
 	if c.Name != "session_id" {
 		t.Errorf("cookie name: got %q, want session_id", c.Name)
 	}
-	if c.Value != sessionID {
-		t.Errorf("cookie value: got %q, want %q", c.Value, sessionID)
+	if c.Value == "" {
+		t.Error("expected non-empty session cookie value")
 	}
 	if !c.HttpOnly {
 		t.Error("cookie must be HttpOnly")
+	}
+
+	uid, ok := svc.sessionMgr.Get(c.Value)
+	if !ok {
+		t.Error("expected created session to exist in session manager")
+	}
+	if uid != 7 {
+		t.Errorf("session user id: got %d, want 7", uid)
 	}
 }
 
@@ -578,9 +605,9 @@ func TestUserIDFromContext_EquivalenceClasses(t *testing.T) {
 }
 
 func TestGetUserByID_DelegatesSuccessToRepo(t *testing.T) {
-	want := &models.User{ID: 5, Username: "alice", Email: "a@b.com"}
+	want := &users.User{ID: 5, Username: "alice", Email: "a@b.com"}
 	repo := &mockRepo{
-		getUserByID: func(_ context.Context, id int) (*models.User, error) {
+		getUserByID: func(_ context.Context, id int) (*users.User, error) {
 			return want, nil
 		},
 	}
@@ -596,7 +623,7 @@ func TestGetUserByID_DelegatesSuccessToRepo(t *testing.T) {
 func TestGetUserByID_DelegatesErrorToRepo(t *testing.T) {
 	dbErr := fmt.Errorf("not found")
 	repo := &mockRepo{
-		getUserByID: func(_ context.Context, id int) (*models.User, error) {
+		getUserByID: func(_ context.Context, id int) (*users.User, error) {
 			return nil, dbErr
 		},
 	}
