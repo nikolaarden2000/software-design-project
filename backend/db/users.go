@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	"github.com/jackc/pgx/v5"
-	"gitlab.com/5130904-20104-teams/software-design-project/internal/models"
+	"github.com/nikolaarden2000/software-design-project/backend/models"
 )
 
 const (

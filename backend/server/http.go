@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"time"
 
-	"gitlab.com/5130904-20104-teams/software-design-project/internal/auth"
-	"gitlab.com/5130904-20104-teams/software-design-project/internal/db"
-	"gitlab.com/5130904-20104-teams/software-design-project/internal/models"
+	"github.com/nikolaarden2000/software-design-project/backend/auth"
+	"github.com/nikolaarden2000/software-design-project/backend/db"
+	"github.com/nikolaarden2000/software-design-project/backend/models"
 )
 
 type registerRequest struct {

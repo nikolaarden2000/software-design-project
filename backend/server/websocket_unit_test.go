@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"gitlab.com/5130904-20104-teams/software-design-project/internal/auth"
-	"gitlab.com/5130904-20104-teams/software-design-project/internal/models"
+	"github.com/nikolaarden2000/software-design-project/backend/auth"
+	"github.com/nikolaarden2000/software-design-project/backend/models"
 )
 
 func makeWSURL(s *httptest.Server, path string) string {

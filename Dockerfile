@@ -5,13 +5,13 @@ RUN npm ci || npm install
 RUN npm test | tee js-test-report.txt
 
 FROM golang:tip-trixie AS go-build
-WORKDIR /software-design
-COPY go.mod go.sum* ./
+WORKDIR /software-design/backend
+COPY ./backend/go.mod ./backend/go.sum* ./
 RUN go mod download
 COPY . .
 
 RUN go test -cover ./... | tee go-coverage-report.txt
-RUN go build -o app .
+RUN go build -o app ./cmd
 
 FROM debian:trixie-slim
 WORKDIR /software-design

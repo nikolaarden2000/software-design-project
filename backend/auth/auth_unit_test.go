@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"gitlab.com/5130904-20104-teams/software-design-project/internal/models"
+	"github.com/nikolaarden2000/software-design-project/backend/models"
 )
 
 var errNotConfigured = errors.New("mock: method not configured")
