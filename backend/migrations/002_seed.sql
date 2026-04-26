@@ -55,75 +55,75 @@ INSERT INTO locations (company_id, city, street, house_number, latitude, longitu
 
 
 INSERT INTO rooms (location_id, title, capacity, price, description, images, available_from, available_to) VALUES
-(1, 'Переговорка "Стандарт"', 6, 2500, 'Уютная переговорка для небольших встреч', ARRAY['/static/images/room1.jpg', '/static/images/room2.jpg'], '00:00', '21:00'),
-(1, 'Конференц-зал "Бизнес"', 12, 5000, 'Просторный зал для презентаций', ARRAY['/static/images/room3.jpg', '/static/images/room4.jpg', '/static/images/room5.jpg'], '08:00', '22:00'),
+(1, 'Переговорка "Стандарт"', 6, 2500, 'Уютная переговорка для небольших встреч', ARRAY['/images/room1.jpg', '/images/room2.jpg'], '00:00', '21:00'),
+(1, 'Конференц-зал "Бизнес"', 12, 5000, 'Просторный зал для презентаций', ARRAY['/images/room3.jpg', '/images/room4.jpg', '/images/room5.jpg'], '08:00', '22:00'),
 
-(2, 'Зал "Нева"', 8, 3500, 'Зал с панорамным видом на Невский проспект', ARRAY['/static/images/room6.jpg'], '10:00', '20:00'),
-(2, 'Кабинет "Эрмитаж"', 4, 2000, 'Компактный кабинет для переговоров', ARRAY['/static/images/room7.jpg', '/static/images/room8.jpg', '/static/images/room9.jpg'], '09:00', '21:00'),
-(2, 'Студия "Аврора"', 15, 6000, 'Просторная студия для мастер-классов', ARRAY['/static/images/room10.jpg', '/static/images/room11.jpg'], '08:00', '23:00'),
+(2, 'Зал "Нева"', 8, 3500, 'Зал с панорамным видом на Невский проспект', ARRAY['/images/room6.jpg'], '10:00', '20:00'),
+(2, 'Кабинет "Эрмитаж"', 4, 2000, 'Компактный кабинет для переговоров', ARRAY['/images/room7.jpg', '/images/room8.jpg', '/images/room9.jpg'], '09:00', '21:00'),
+(2, 'Студия "Аврора"', 15, 6000, 'Просторная студия для мастер-классов', ARRAY['/images/room10.jpg', '/images/room11.jpg'], '08:00', '23:00'),
 
-(3, 'Переговорка "Волга"', 5, 1800, 'Комната для совещаний', ARRAY['/static/images/room12.jpg', '/static/images/room13.jpg', '/static/images/room14.jpg'], '09:00', '18:00'),
-(3, 'Офис "Самара"', 10, 3200, 'Просторный офис для работы', ARRAY['/static/images/room15.jpg'], '08:00', '20:00'),
+(3, 'Переговорка "Волга"', 5, 1800, 'Комната для совещаний', ARRAY['/images/room12.jpg', '/images/room13.jpg', '/images/room14.jpg'], '09:00', '18:00'),
+(3, 'Офис "Самара"', 10, 3200, 'Просторный офис для работы', ARRAY['/images/room15.jpg'], '08:00', '20:00'),
 
-(4, 'Зал "Кама"', 20, 4500, 'Большой конференц-зал', ARRAY['/static/images/room16.jpg', '/static/images/room17.jpg', '/static/images/room18.jpg', '/static/images/room19.jpg'], '07:00', '22:00'),
-(4, 'Кабинет "Урал"', 6, 2200, 'Кабинет для переговоров', ARRAY['/static/images/room20.jpg', '/static/images/room1.jpg'], '10:00', '19:00'),
+(4, 'Зал "Кама"', 20, 4500, 'Большой конференц-зал', ARRAY['/images/room16.jpg', '/images/room17.jpg', '/images/room18.jpg', '/images/room19.jpg'], '07:00', '22:00'),
+(4, 'Кабинет "Урал"', 6, 2200, 'Кабинет для переговоров', ARRAY['/images/room20.jpg', '/images/room1.jpg'], '10:00', '19:00'),
 
-(5, 'Лофт "Арбат"', 15, 5500, 'Стильное пространство для мероприятий', ARRAY['/static/images/room2.jpg', '/static/images/room3.jpg', '/static/images/room4.jpg'], '08:00', '23:00'),
-(5, 'Офис "Патриарх"', 8, 3000, 'Офис в историческом центре', ARRAY['/static/images/room5.jpg', '/static/images/room6.jpg'], '09:00', '21:00'),
+(5, 'Лофт "Арбат"', 15, 5500, 'Стильное пространство для мероприятий', ARRAY['/images/room2.jpg', '/images/room3.jpg', '/images/room4.jpg'], '08:00', '23:00'),
+(5, 'Офис "Патриарх"', 8, 3000, 'Офис в историческом центре', ARRAY['/images/room5.jpg', '/images/room6.jpg'], '09:00', '21:00'),
 
-(6, 'Зал "Литейный"', 12, 4200, 'Зал для семинаров', ARRAY['/static/images/room7.jpg', '/static/images/room8.jpg', '/static/images/room9.jpg', '/static/images/room10.jpg'], '10:00', '20:00'),
-(6, 'Кабинет "Невский"', 4, 1800, 'Малый переговорный кабинет', ARRAY['/static/images/room11.jpg'], '09:00', '18:00'),
-(6, 'Студия "Балтика"', 25, 7000, 'Просторная студия для мероприятий', ARRAY['/static/images/room12.jpg', '/static/images/room13.jpg'], '08:00', '22:00'),
+(6, 'Зал "Литейный"', 12, 4200, 'Зал для семинаров', ARRAY['/images/room7.jpg', '/images/room8.jpg', '/images/room9.jpg', '/images/room10.jpg'], '10:00', '20:00'),
+(6, 'Кабинет "Невский"', 4, 1800, 'Малый переговорный кабинет', ARRAY['/images/room11.jpg'], '09:00', '18:00'),
+(6, 'Студия "Балтика"', 25, 7000, 'Просторная студия для мероприятий', ARRAY['/images/room12.jpg', '/images/room13.jpg'], '08:00', '22:00'),
 
-(7, 'Офис "Московский"', 6, 2000, 'Офис у дороги', ARRAY['/static/images/room14.jpg', '/static/images/room15.jpg', '/static/images/room16.jpg'], '09:00', '18:00'),
-(7, 'Переговорка "Стандарт"', 4, 1500, 'Небольшая переговорка', ARRAY['/static/images/room17.jpg'], '08:00', '20:00'),
+(7, 'Офис "Московский"', 6, 2000, 'Офис у дороги', ARRAY['/images/room14.jpg', '/images/room15.jpg', '/images/room16.jpg'], '09:00', '18:00'),
+(7, 'Переговорка "Стандарт"', 4, 1500, 'Небольшая переговорка', ARRAY['/images/room17.jpg'], '08:00', '20:00'),
 
-(8, 'Зал "Поэзия"', 10, 2800, 'Зал для творческих встреч', ARRAY['/static/images/room18.jpg', '/static/images/room19.jpg', '/static/images/room20.jpg'], '10:00', '19:00'),
-(8, 'Кабинет "Проза"', 5, 1700, 'Кабинет для работы', ARRAY['/static/images/room1.jpg', '/static/images/room2.jpg'], '09:00', '21:00'),
-(8, 'Конференц-зал "Классика"', 30, 8000, 'Большой зал для конференций', ARRAY['/static/images/room3.jpg', '/static/images/room4.jpg', '/static/images/room5.jpg', '/static/images/room6.jpg', '/static/images/room7.jpg'], '07:00', '23:00'),
+(8, 'Зал "Поэзия"', 10, 2800, 'Зал для творческих встреч', ARRAY['/images/room18.jpg', '/images/room19.jpg', '/images/room20.jpg'], '10:00', '19:00'),
+(8, 'Кабинет "Проза"', 5, 1700, 'Кабинет для работы', ARRAY['/images/room1.jpg', '/images/room2.jpg'], '09:00', '21:00'),
+(8, 'Конференц-зал "Классика"', 30, 8000, 'Большой зал для конференций', ARRAY['/images/room3.jpg', '/images/room4.jpg', '/images/room5.jpg', '/images/room6.jpg', '/images/room7.jpg'], '07:00', '23:00'),
 
-(9, 'Переговорка "Престиж"', 8, 3000, 'Комната для переговоров', ARRAY['/static/images/room8.jpg', '/static/images/room9.jpg'], '09:00', '20:00'),
-(9, 'Офис "Деловой"', 12, 4000, 'Офис для работы', ARRAY['/static/images/room10.jpg', '/static/images/room11.jpg', '/static/images/room12.jpg'], '08:00', '21:00'),
+(9, 'Переговорка "Престиж"', 8, 3000, 'Комната для переговоров', ARRAY['/images/room8.jpg', '/images/room9.jpg'], '09:00', '20:00'),
+(9, 'Офис "Деловой"', 12, 4000, 'Офис для работы', ARRAY['/images/room10.jpg', '/images/room11.jpg', '/images/room12.jpg'], '08:00', '21:00'),
 
-(10, 'Зал "Столичный"', 15, 5000, 'Зал для мероприятий', ARRAY['/static/images/room13.jpg'], '10:00', '22:00'),
-(10, 'Кабинет "Уютный"', 4, 1600, 'Малый кабинет', ARRAY['/static/images/room14.jpg', '/static/images/room15.jpg'], '09:00', '18:00'),
-(10, 'Студия "Профессионал"', 20, 6500, 'Студия для тренингов', ARRAY['/static/images/room16.jpg', '/static/images/room17.jpg', '/static/images/room18.jpg'], '08:00', '23:00'),
+(10, 'Зал "Столичный"', 15, 5000, 'Зал для мероприятий', ARRAY['/images/room13.jpg'], '10:00', '22:00'),
+(10, 'Кабинет "Уютный"', 4, 1600, 'Малый кабинет', ARRAY['/images/room14.jpg', '/images/room15.jpg'], '09:00', '18:00'),
+(10, 'Студия "Профессионал"', 20, 6500, 'Студия для тренингов', ARRAY['/images/room16.jpg', '/images/room17.jpg', '/images/room18.jpg'], '08:00', '23:00'),
 
-(11, 'Переговорка "Кутузов"', 6, 2800, 'Комната для деловых встреч', ARRAY['/static/images/room8.jpg', '/static/images/room9.jpg'], '09:00', '20:00'),
-(11, 'Офис "Бородино"', 10, 4200, 'Просторный офис с видом на проспект', ARRAY['/static/images/room10.jpg', '/static/images/room11.jpg', '/static/images/room12.jpg'], '08:00', '21:00'),
-(11, 'Зал "Победа"', 18, 6500, 'Большой зал для конференций', ARRAY['/static/images/room13.jpg', '/static/images/room14.jpg'], '07:00', '22:00'),
+(11, 'Переговорка "Кутузов"', 6, 2800, 'Комната для деловых встреч', ARRAY['/images/room8.jpg', '/images/room9.jpg'], '09:00', '20:00'),
+(11, 'Офис "Бородино"', 10, 4200, 'Просторный офис с видом на проспект', ARRAY['/images/room10.jpg', '/images/room11.jpg', '/images/room12.jpg'], '08:00', '21:00'),
+(11, 'Зал "Победа"', 18, 6500, 'Большой зал для конференций', ARRAY['/images/room13.jpg', '/images/room14.jpg'], '07:00', '22:00'),
 
-(12, 'Кабинет "Нева"', 4, 2200, 'Уютный кабинет для переговоров', ARRAY['/static/images/room15.jpg'], '10:00', '19:00'),
-(12, 'Зал "Балтика"', 12, 4800, 'Зал для семинаров и тренингов', ARRAY['/static/images/room16.jpg', '/static/images/room17.jpg', '/static/images/room18.jpg'], '09:00', '21:00'),
-(12, 'Студия "Остров"', 20, 7200, 'Просторное пространство для мероприятий', ARRAY['/static/images/room19.jpg', '/static/images/room20.jpg', '/static/images/room1.jpg'], '08:00', '23:00'),
+(12, 'Кабинет "Нева"', 4, 2200, 'Уютный кабинет для переговоров', ARRAY['/images/room15.jpg'], '10:00', '19:00'),
+(12, 'Зал "Балтика"', 12, 4800, 'Зал для семинаров и тренингов', ARRAY['/images/room16.jpg', '/images/room17.jpg', '/images/room18.jpg'], '09:00', '21:00'),
+(12, 'Студия "Остров"', 20, 7200, 'Просторное пространство для мероприятий', ARRAY['/images/room19.jpg', '/images/room20.jpg', '/images/room1.jpg'], '08:00', '23:00'),
 
-(13, 'Офис "Самара-Сити"', 8, 2400, 'Современный офис в деловом районе', ARRAY['/static/images/room2.jpg', '/static/images/room3.jpg'], '09:00', '18:00'),
-(13, 'Переговорка "Волга"', 5, 1700, 'Небольшая переговорная комната', ARRAY['/static/images/room4.jpg', '/static/images/room5.jpg', '/static/images/room6.jpg'], '08:00', '20:00'),
+(13, 'Офис "Самара-Сити"', 8, 2400, 'Современный офис в деловом районе', ARRAY['/images/room2.jpg', '/images/room3.jpg'], '09:00', '18:00'),
+(13, 'Переговорка "Волга"', 5, 1700, 'Небольшая переговорная комната', ARRAY['/images/room4.jpg', '/images/room5.jpg', '/images/room6.jpg'], '08:00', '20:00'),
 
-(14, 'Зал "Кама"', 15, 3800, 'Зал для мероприятий и презентаций', ARRAY['/static/images/room7.jpg', '/static/images/room8.jpg'], '10:00', '22:00'),
-(14, 'Кабинет "Урал"', 6, 2100, 'Компактный кабинет для работы', ARRAY['/static/images/room9.jpg', '/static/images/room10.jpg', '/static/images/room11.jpg', '/static/images/room12.jpg'], '09:00', '21:00'),
+(14, 'Зал "Кама"', 15, 3800, 'Зал для мероприятий и презентаций', ARRAY['/images/room7.jpg', '/images/room8.jpg'], '10:00', '22:00'),
+(14, 'Кабинет "Урал"', 6, 2100, 'Компактный кабинет для работы', ARRAY['/images/room9.jpg', '/images/room10.jpg', '/images/room11.jpg', '/images/room12.jpg'], '09:00', '21:00'),
 
-(15, 'Конференц-зал "Ленинский"', 25, 7500, 'Большой зал для конференций', ARRAY['/static/images/room13.jpg', '/static/images/room14.jpg', '/static/images/room15.jpg'], '07:00', '23:00'),
-(15, 'Переговорка "Стандарт"', 6, 2600, 'Комната для совещаний', ARRAY['/static/images/room16.jpg'], '09:00', '20:00'),
-(15, 'Офис "Проспект"', 12, 4500, 'Офисное помещение для работы', ARRAY['/static/images/room17.jpg', '/static/images/room18.jpg'], '08:00', '21:00'),
+(15, 'Конференц-зал "Ленинский"', 25, 7500, 'Большой зал для конференций', ARRAY['/images/room13.jpg', '/images/room14.jpg', '/images/room15.jpg'], '07:00', '23:00'),
+(15, 'Переговорка "Стандарт"', 6, 2600, 'Комната для совещаний', ARRAY['/images/room16.jpg'], '09:00', '20:00'),
+(15, 'Офис "Проспект"', 12, 4500, 'Офисное помещение для работы', ARRAY['/images/room17.jpg', '/images/room18.jpg'], '08:00', '21:00'),
 
-(16, 'Зал "Московский"', 16, 5200, 'Просторный зал для мероприятий', ARRAY['/static/images/room19.jpg', '/static/images/room20.jpg', '/static/images/room1.jpg', '/static/images/room2.jpg'], '10:00', '22:00'),
-(16, 'Кабинет "Невский"', 4, 1900, 'Малый переговорный кабинет', ARRAY['/static/images/room3.jpg'], '09:00', '18:00'),
+(16, 'Зал "Московский"', 16, 5200, 'Просторный зал для мероприятий', ARRAY['/images/room19.jpg', '/images/room20.jpg', '/images/room1.jpg', '/images/room2.jpg'], '10:00', '22:00'),
+(16, 'Кабинет "Невский"', 4, 1900, 'Малый переговорный кабинет', ARRAY['/images/room3.jpg'], '09:00', '18:00'),
 
-(17, 'Офис "Космос"', 10, 3200, 'Офис в центральном районе', ARRAY['/static/images/room4.jpg', '/static/images/room5.jpg', '/static/images/room6.jpg'], '09:00', '20:00'),
-(17, 'Переговорка "Спутник"', 5, 1800, 'Небольшая переговорная', ARRAY['/static/images/room7.jpg', '/static/images/room8.jpg'], '08:00', '19:00'),
-(17, 'Зал "Орбита"', 22, 5800, 'Зал для проведения мероприятий', ARRAY['/static/images/room9.jpg', '/static/images/room10.jpg'], '07:00', '22:00'),
+(17, 'Офис "Космос"', 10, 3200, 'Офис в центральном районе', ARRAY['/images/room4.jpg', '/images/room5.jpg', '/images/room6.jpg'], '09:00', '20:00'),
+(17, 'Переговорка "Спутник"', 5, 1800, 'Небольшая переговорная', ARRAY['/images/room7.jpg', '/images/room8.jpg'], '08:00', '19:00'),
+(17, 'Зал "Орбита"', 22, 5800, 'Зал для проведения мероприятий', ARRAY['/images/room9.jpg', '/images/room10.jpg'], '07:00', '22:00'),
 
-(18, 'Кабинет "Кама"', 6, 2300, 'Кабинет для деловых встреч', ARRAY['/static/images/room11.jpg', '/static/images/room12.jpg', '/static/images/room13.jpg'], '10:00', '19:00'),
-(18, 'Зал "Прикамье"', 18, 4900, 'Просторный зал для конференций', ARRAY['/static/images/room14.jpg', '/static/images/room15.jpg'], '09:00', '21:00'),
+(18, 'Кабинет "Кама"', 6, 2300, 'Кабинет для деловых встреч', ARRAY['/images/room11.jpg', '/images/room12.jpg', '/images/room13.jpg'], '10:00', '19:00'),
+(18, 'Зал "Прикамье"', 18, 4900, 'Просторный зал для конференций', ARRAY['/images/room14.jpg', '/images/room15.jpg'], '09:00', '21:00'),
 
-(19, 'Офис "Москва-Сити"', 14, 6800, 'Офис с видом на деловой центр', ARRAY['/static/images/room16.jpg', '/static/images/room17.jpg', '/static/images/room18.jpg', '/static/images/room19.jpg'], '08:00', '23:00'),
-(19, 'Переговорка "Деловой"', 8, 3500, 'Переговорная комната премиум-класса', ARRAY['/static/images/room20.jpg', '/static/images/room1.jpg'], '09:00', '21:00'),
-(19, 'Зал "Столичный"', 30, 8500, 'Роскошный зал для важных мероприятий', ARRAY['/static/images/room2.jpg', '/static/images/room3.jpg', '/static/images/room4.jpg', '/static/images/room5.jpg', '/static/images/room6.jpg'], '07:00', '23:00'),
+(19, 'Офис "Москва-Сити"', 14, 6800, 'Офис с видом на деловой центр', ARRAY['/images/room16.jpg', '/images/room17.jpg', '/images/room18.jpg', '/images/room19.jpg'], '08:00', '23:00'),
+(19, 'Переговорка "Деловой"', 8, 3500, 'Переговорная комната премиум-класса', ARRAY['/images/room20.jpg', '/images/room1.jpg'], '09:00', '21:00'),
+(19, 'Зал "Столичный"', 30, 8500, 'Роскошный зал для важных мероприятий', ARRAY['/images/room2.jpg', '/images/room3.jpg', '/images/room4.jpg', '/images/room5.jpg', '/images/room6.jpg'], '07:00', '23:00'),
 
-(20, 'Кабинет "Петроградский"', 4, 2400, 'Элегантный кабинет для переговоров', ARRAY['/static/images/room7.jpg'], '10:00', '19:00'),
-(20, 'Зал "Невский"', 12, 5100, 'Зал для семинаров и презентаций', ARRAY['/static/images/room8.jpg', '/static/images/room9.jpg', '/static/images/room10.jpg'], '09:00', '21:00'),
-(20, 'Студия "Арт"', 25, 7800, 'Творческое пространство для мероприятий', ARRAY['/static/images/room11.jpg', '/static/images/room12.jpg'], '08:00', '22:00');
+(20, 'Кабинет "Петроградский"', 4, 2400, 'Элегантный кабинет для переговоров', ARRAY['/images/room7.jpg'], '10:00', '19:00'),
+(20, 'Зал "Невский"', 12, 5100, 'Зал для семинаров и презентаций', ARRAY['/images/room8.jpg', '/images/room9.jpg', '/images/room10.jpg'], '09:00', '21:00'),
+(20, 'Студия "Арт"', 25, 7800, 'Творческое пространство для мероприятий', ARRAY['/images/room11.jpg', '/images/room12.jpg'], '08:00', '22:00');
 
 -- Добавляем пользователей
 INSERT INTO users (email, name, password_hash, role) VALUES

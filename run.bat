@@ -14,7 +14,7 @@ docker-compose build
 GOTO end
 
 :app
-docker-compose up --build app
+docker-compose up --build
 GOTO end
 
 :new
