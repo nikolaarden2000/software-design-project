@@ -1,3 +1,8 @@
+/**
+ * home.test.js
+ * Тесты для home.js
+ */
+
 async function flushPromises() {
   await Promise.resolve();
   await Promise.resolve();

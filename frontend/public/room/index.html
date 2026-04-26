@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Комната — Своя Бронь</title>
+
+  <link rel="stylesheet" href="/room/styles.css">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="topbar__left">
+      <a href="/" class="brand">Своя Бронь</a>
+    </div>
+
+    <div class="topbar__center"></div>
+
+    <div class="topbar__right">
+      <div class="auth-container">
+        <button id="authButton" class="auth-btn" data-auth="0" aria-haspopup="true" aria-expanded="false">
+          Войти
+        </button>
+
+        <div id="cabinetMenu" class="cabinet-menu hidden" role="menu" aria-hidden="true">
+          <div class="user-info">
+            <span id="userGreeting">Привет, </span>
+          </div>
+
+          <button id="historyBtn" class="cabinet-btn" role="menuitem">
+            История броней
+          </button>
+
+          <button id="logoutBtn" class="cabinet-btn" role="menuitem">
+            Выйти
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container room-page">
+    <section class="room-head">
+      <div>
+        <div id="mainImageWrap" class="main-image">
+          <img id="mainImage" src="/shared/placeholders/room-placeholder.svg" alt="Изображение комнаты">
+        </div>
+
+        <div id="thumbs" class="thumbs"></div>
+      </div>
+
+      <aside class="room-info">
+        <h1>Загрузка...</h1>
+
+        <div class="company-name">Загрузка...</div>
+        <div class="address">Загрузка...</div>
+
+        <div class="price-capacity">
+          <div class="price">0 ₽/ч</div>
+          <div class="capacity">Вместимость: 0 чел.</div>
+        </div>
+
+        <div class="availability">
+          <div class="label">Время работы</div>
+          <div class="value">c — до —</div>
+        </div>
+
+        <div class="book-button">
+          <button id="bookBtn" class="btn primary" disabled>
+            Забронировать
+          </button>
+        </div>
+      </aside>
+    </section>
+
+    <section class="room-body">
+      <article class="description-card">
+        <h2>Описание</h2>
+
+        <div id="description">
+          Загрузка описания...
+        </div>
+      </article>
+
+      <aside class="sidebar">
+        <div class="map-card">
+          <h3>Местоположение</h3>
+          <div id="map"></div>
+        </div>
+
+        <div class="details-card">
+          <h3>Дополнительно</h3>
+          <ul>
+            <li>Макс. вместимость: —</li>
+            <li>Адрес: —</li>
+            <li>ID помещения: —</li>
+          </ul>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <div id="bookingModal" class="booking-modal hidden" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="booking-modal__content" role="document">
+      <button class="modal-close" id="bookingClose" aria-label="Закрыть">
+        &times;
+      </button>
+
+      <h3 id="bookingTitle">Бронирование</h3>
+
+      <div id="bookingNotice" style="color:var(--muted);margin-bottom:8px;font-size:14px">
+        Выберите дату и слоты
+      </div>
+
+      <div class="booking-calendar" id="bookingCalendar" role="tablist" aria-label="Даты для бронирования"></div>
+
+      <div class="booking-times" id="bookingTimes" aria-live="polite" style="margin-top:12px"></div>
+
+      <div class="booking-footer" style="margin-top:16px; display:flex; gap:8px; align-items:center; justify-content:space-between;">
+        <div id="selectionSummary" style="color:var(--muted)">
+          Слоты: не выбраны
+        </div>
+
+        <div style="display:flex;gap:8px">
+          <button id="bookingCancel" class="btn">Отмена</button>
+          <button id="bookingConfirm" class="btn primary">Подтвердить</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/shared/api.js" defer></script>
+  <script src="/room/room.js" defer></script>
+</body>
+</html>

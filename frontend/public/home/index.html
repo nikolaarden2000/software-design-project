@@ -5,32 +5,30 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>СВОя Бронь</title>
 
-  <link rel="stylesheet" href="/static/home/topbar.css">
-  <link rel="stylesheet" href="/static/home/styles.css">
+  <link rel="stylesheet" href="/home/topbar.css">
+  <link rel="stylesheet" href="/home/styles.css">
 </head>
-<body data-initial-city="">
 
+<body data-initial-city="Москва">
   <header class="topbar">
     <div class="topbar__left">
       <a href="/" class="brand" id="brand">Своя Бронь</a>
     </div>
 
     <div class="topbar__center">
-      <button class="city-btn" id="cityBtn" aria-haspopup="dialog">Ваш город: <span id="cityName">...</span> ▾</button>
+      <button class="city-btn" id="cityBtn" aria-haspopup="dialog">
+        Ваш город: <span id="cityName">Москва</span> ▾
+      </button>
     </div>
 
     <div class="topbar__right">
       <div class="auth-container">
-        {{ if .Auth }}
-          <button id="authButton" class="auth-btn" data-auth="1" data-username="{{.Username }}">Кабинет</button>
-        {{ else }}
-          <button id="authButton" class="auth-btn" data-auth="0">Войти</button>
-        {{ end }}
-      
+        <button id="authButton" class="auth-btn" data-auth="0">
+          Войти
+        </button>
       </div>
     </div>
   </header>
-
 
   <main class="container">
     <aside class="filters" id="filters">
@@ -44,28 +42,26 @@
         <div class="company-toggle-wrap" id="companyToggleWrap"></div>
       </div>
 
-     <div class="filter-block">
-  	<label class="filter-label">Цена (руб/час)</label>
-  	<input 
-    		type="text" 
-    		id="priceInput" 
-    		placeholder="максимальная цена" 
-    		inputmode="numeric"
-    		pattern="[0-9]*"
-  	/>
-     </div>
+      <div class="filter-block">
+        <label class="filter-label">Цена (руб/час)</label>
+        <input
+          type="text"
+          id="priceInput"
+          placeholder="максимальная цена"
+          inputmode="numeric"
+          pattern="[0-9]*"
+        />
+      </div>
 
       <div class="filter-block">
         <label class="filter-label">Вместимость (от)</label>
- 	<input 
-    		type="number" 
-    		id="capacityInput" 
-    		placeholder="Вместимость" 
-                min="1" 
-		step="1"
-  	/>
-     </div>
-
+        <input
+          type="number"
+          id="capacityInput"
+          placeholder="Вместимость"
+          min="1"
+          step="1"
+        />
       </div>
 
       <div class="filter-actions">
@@ -83,11 +79,12 @@
     </section>
   </main>
 
-
   <dialog id="cityModal" class="city-modal">
     <form method="dialog" class="city-modal__form">
       <h3>Выберите город</h3>
+
       <input id="citySearch" type="search" placeholder="Поиск города..." />
+
       <ul id="cityList" class="city-list">
         <li class="city-item">Москва</li>
         <li class="city-item">Санкт-Петербург</li>
@@ -96,6 +93,7 @@
         <li class="city-item">Новосибирск</li>
         <li class="city-item">Нижний Новгород</li>
       </ul>
+
       <menu class="dialog-actions">
         <button id="cityCancel" class="btn">Отмена</button>
         <button id="cityOk" class="btn primary">Выбрать</button>
@@ -103,6 +101,7 @@
     </form>
   </dialog>
 
-  <script src="/static/home/home.js" defer></script>
+  <script src="/home/home.js" defer></script>
+  <script src="/shared/api.js"></script>
 </body>
 </html>

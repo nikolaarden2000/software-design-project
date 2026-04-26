@@ -1,3 +1,8 @@
+/**
+ * auth.test.js
+ * Тесты для auth.js
+ */
+
 const { setMessage, postJson, initAuthModule } = require('./auth.js');
 async function flushPromises() {
   await Promise.resolve();

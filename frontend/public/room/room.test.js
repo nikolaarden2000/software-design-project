@@ -1,3 +1,8 @@
+/**
+ * room.test.js
+ * Тесты для room.js
+ */
+
 describe('room.js', () => {
   let roomModule;
   let wsInstances;

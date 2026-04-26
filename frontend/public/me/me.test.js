@@ -1,3 +1,8 @@
+/**
+ * me.test.js
+ * Тесты для me.js
+ */
+
 describe('me.js', () => {
   let meModule;
   let wsInstances;
