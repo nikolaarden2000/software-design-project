@@ -19,7 +19,8 @@ const (
 		SELECT r.available_from, r.available_to, l.timezone
 		FROM rooms r
 		JOIN locations l ON r.location_id = l.id
-		WHERE r.id = $1`
+		WHERE r.id = $1
+			AND r.status = 'published'`
 
 	queryGetBookingsInRange = `
 		SELECT start_time, end_time
@@ -33,11 +34,15 @@ const (
 		SELECT l.timezone
 		FROM rooms r
 		JOIN locations l ON r.location_id = l.id
-		WHERE r.id = $1`
+		WHERE r.id = $1
+			AND r.status = 'published'`
 
 	queryCreateBookingCTE = `
 		WITH room_price AS (
-			SELECT price FROM rooms WHERE id = $2
+			SELECT price
+			FROM rooms
+			WHERE id = $2
+				AND status = 'published'
 		)
 		INSERT INTO bookings (user_id, room_id, start_time, end_time, total_price)
 		SELECT $1, $2, $3, $4, price * $5

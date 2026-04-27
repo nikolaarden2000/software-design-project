@@ -15,7 +15,7 @@ import (
 
 const (
 	queryGetRoomsBatchByCity = `
-		SELECT r.id, r.title, c.name, CONCAT(l.city, ', ', l.street, ', ', l.house_number), r.capacity, r.images[1], r.price
+		SELECT r.id, r.title, c.name, CONCAT(l.city, ', ', l.street, ', ', l.house_number), r.capacity, COALESCE(r.images[1], '/shared/placeholders/room-placeholder.svg'), r.price
 		FROM rooms r
 		JOIN locations l ON r.location_id = l.id
 		JOIN companies c ON l.company_id = c.id
