@@ -39,6 +39,32 @@ const (
 		)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING id`
+
+	queryListAdminLocations = `
+		SELECT
+			l.id,
+			l.company_id,
+			c.name AS company_name,
+			l.city,
+			(l.city || ', ' || l.street || ' ' || l.house_number) AS address,
+			l.latitude,
+			l.longitude,
+			l.timezone,
+			COUNT(r.id)::int AS rooms_count
+		FROM locations l
+		JOIN companies c ON c.id = l.company_id
+		LEFT JOIN rooms r ON r.location_id = l.id
+		WHERE (
+			$1::bool
+			OR EXISTS (
+				SELECT 1
+				FROM admin_locations al
+				WHERE al.location_id = l.id
+				  AND al.admin_id = $2
+			)
+		)
+		GROUP BY l.id, l.company_id, c.name, l.city, l.street, l.house_number, l.latitude, l.longitude, l.timezone
+		ORDER BY l.id ASC`
 )
 
 type Repository struct {
@@ -70,6 +96,46 @@ func (r *Repository) ListLocations(ctx context.Context, companyID *int, city *st
 			&location.Lat,
 			&location.Lng,
 			&location.Timezone,
+		); err != nil {
+			return nil, err
+		}
+
+		result = append(result, location)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (r *Repository) ListAdminLocations(ctx context.Context, adminID int, includeAll bool) ([]AdminLocation, error) {
+	if adminID <= 0 && !includeAll {
+		return nil, db.ErrInvalidID
+	}
+
+	rows, err := r.q.Query(ctx, queryListAdminLocations, includeAll, adminID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make([]AdminLocation, 0)
+
+	for rows.Next() {
+		var location AdminLocation
+
+		if err := rows.Scan(
+			&location.ID,
+			&location.CompanyID,
+			&location.CompanyName,
+			&location.City,
+			&location.Address,
+			&location.Lat,
+			&location.Lng,
+			&location.Timezone,
+			&location.RoomsCount,
 		); err != nil {
 			return nil, err
 		}

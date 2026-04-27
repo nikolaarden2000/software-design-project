@@ -14,10 +14,16 @@ import (
 
 type AuthService interface {
 	Register(ctx context.Context, username, email, password string) (int, error)
-	Login(ctx context.Context, email, password string, w http.ResponseWriter) (*users.User, error)
 	RegisterWithRole(ctx context.Context, username, email, password, role string) (int, error)
+	Login(ctx context.Context, email, password string, w http.ResponseWriter) (*users.User, error)
 	Logout(w http.ResponseWriter, r *http.Request)
 	GetUserByID(ctx context.Context, id int) (*users.User, error)
+}
+
+type UserRepo interface {
+	ListAdmins(ctx context.Context) ([]users.Admin, error)
+	AssignAdminToLocation(ctx context.Context, adminID, locationID int) error
+	DeleteAdminLocationAssignment(ctx context.Context, adminID, locationID int) error
 }
 
 type CompanyRepo interface {
@@ -28,21 +34,22 @@ type CompanyRepo interface {
 
 type LocationRepo interface {
 	ListLocations(ctx context.Context, companyID *int, city *string) ([]locations.Location, error)
+	ListAdminLocations(ctx context.Context, adminID int, includeAll bool) ([]locations.AdminLocation, error)
 	CreateLocation(ctx context.Context, companyID int, city string, address string, lat float64, lng float64, timezone string) (*locations.Location, error)
 	GetLocationByID(ctx context.Context, id int) (*locations.Location, error)
 	ExistsByID(ctx context.Context, id int) (bool, error)
-}
-
-type UserRepo interface {
-	ListAdmins(ctx context.Context) ([]users.Admin, error)
-	AssignAdminToLocation(ctx context.Context, adminID, locationID int) error
-	DeleteAdminLocationAssignment(ctx context.Context, adminID, locationID int) error
 }
 
 type RoomRepo interface {
 	GetRoomsBatchByCity(ctx context.Context, lastID, limit int, city string) ([]rooms.Room, error)
 	GetCompaniesByCity(ctx context.Context, city string) ([]string, error)
 	GetRoomPageData(ctx context.Context, roomID int) (*rooms.RoomPageData, error)
+
+	ListAdminRooms(ctx context.Context, adminID int, includeAll bool, locationID *int, status *string) ([]rooms.AdminRoomListItem, error)
+	GetAdminRoom(ctx context.Context, adminID int, includeAll bool, roomID int) (*rooms.AdminRoomDetails, error)
+	CreateAdminRoom(ctx context.Context, creatorID int, includeAll bool, input rooms.AdminRoomInput) (*rooms.AdminRoomListItem, error)
+	UpdateAdminRoom(ctx context.Context, adminID int, includeAll bool, roomID int, input rooms.AdminRoomInput) error
+	SubmitAdminRoom(ctx context.Context, adminID int, includeAll bool, roomID int) error
 }
 
 type BookingRepo interface {

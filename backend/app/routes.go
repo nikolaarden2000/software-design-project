@@ -11,6 +11,7 @@ import (
 
 func RegisterRoutes(mux *http.ServeMux, authService *auth.AuthService, srv *server.Server) {
 	requireAuth := authService.RequireAuth
+	requireAdmin := authService.RequireRole(users.RoleAdmin, users.RoleSuperuser)
 	requireSuperuser := authService.RequireRole(users.RoleSuperuser)
 
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
@@ -46,6 +47,36 @@ func RegisterRoutes(mux *http.ServeMux, authService *auth.AuthService, srv *serv
 	mux.Handle(
 		"POST /api/bookings/{id}/cancel",
 		requireAuth(http.HandlerFunc(srv.CancelBookingHandler)),
+	)
+
+	mux.Handle(
+		"GET /api/admin/locations",
+		requireAdmin(http.HandlerFunc(srv.AdminLocationsHandler)),
+	)
+
+	mux.Handle(
+		"GET /api/admin/rooms",
+		requireAdmin(http.HandlerFunc(srv.AdminRoomsHandler)),
+	)
+
+	mux.Handle(
+		"GET /api/admin/rooms/{room_id}",
+		requireAdmin(http.HandlerFunc(srv.AdminRoomDetailsHandler)),
+	)
+
+	mux.Handle(
+		"POST /api/admin/rooms",
+		requireAdmin(http.HandlerFunc(srv.CreateAdminRoomHandler)),
+	)
+
+	mux.Handle(
+		"PATCH /api/admin/rooms/{room_id}",
+		requireAdmin(http.HandlerFunc(srv.UpdateAdminRoomHandler)),
+	)
+
+	mux.Handle(
+		"POST /api/admin/rooms/{room_id}/submit",
+		requireAdmin(http.HandlerFunc(srv.SubmitAdminRoomHandler)),
 	)
 
 	mux.Handle(
