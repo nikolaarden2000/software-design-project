@@ -50,6 +50,11 @@ type RoomRepo interface {
 	CreateAdminRoom(ctx context.Context, creatorID int, includeAll bool, input rooms.AdminRoomInput) (*rooms.AdminRoomListItem, error)
 	UpdateAdminRoom(ctx context.Context, adminID int, includeAll bool, roomID int, input rooms.AdminRoomInput) error
 	SubmitAdminRoom(ctx context.Context, adminID int, includeAll bool, roomID int) error
+
+	ListModerationRooms(ctx context.Context) ([]rooms.ModerationRoom, error)
+	ApproveRoom(ctx context.Context, roomID int) error
+	RejectRoom(ctx context.Context, roomID int, reason string) error
+	ArchiveRoom(ctx context.Context, roomID int) error
 }
 
 type BookingRepo interface {

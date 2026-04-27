@@ -86,3 +86,26 @@ func IsValidStatus(status string) bool {
 		return false
 	}
 }
+
+type ModerationRoomCreator struct {
+	ID       int    `json:"id"`
+	Username string `json:"username"`
+	Email    string `json:"email"`
+}
+
+type ModerationRoom struct {
+	ID            int                    `json:"id"`
+	LocationID    int                    `json:"location_id"`
+	CompanyName   string                 `json:"company_name"`
+	City          string                 `json:"city"`
+	Address       string                 `json:"address"`
+	Title         string                 `json:"title"`
+	Description   string                 `json:"description"`
+	Price         int                    `json:"price"`
+	Capacity      int                    `json:"capacity"`
+	AvailableFrom string                 `json:"available_from"`
+	AvailableTo   string                 `json:"available_to"`
+	Images        []string               `json:"images"`
+	Status        string                 `json:"status"`
+	CreatedBy     *ModerationRoomCreator `json:"created_by"`
+}

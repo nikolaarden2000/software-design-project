@@ -11,6 +11,7 @@ import (
 	"github.com/nikolaarden2000/software-design-project/backend/auth"
 	"github.com/nikolaarden2000/software-design-project/backend/db"
 	"github.com/nikolaarden2000/software-design-project/backend/httpapi"
+	"github.com/nikolaarden2000/software-design-project/backend/rooms"
 	"github.com/nikolaarden2000/software-design-project/backend/users"
 )
 
@@ -36,6 +37,10 @@ type createAdminRequest struct {
 
 type assignAdminLocationRequest struct {
 	LocationID int `json:"location_id"`
+}
+
+type rejectRoomRequest struct {
+	Reason string `json:"reason"`
 }
 
 func (s *Server) ListCompaniesHandler(w http.ResponseWriter, r *http.Request) {
@@ -289,4 +294,97 @@ func (s *Server) DeleteAdminLocationAssignmentHandler(w http.ResponseWriter, r *
 	}
 
 	httpapi.WriteJSON(w, http.StatusNoContent, nil)
+}
+
+func (s *Server) ModerationRoomsHandler(w http.ResponseWriter, r *http.Request) {
+	items, err := s.roomRepo.ListModerationRooms(r.Context())
+	if err != nil {
+		log.Printf("[server] ModerationRoomsHandler: %v", err)
+		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "Внутренняя ошибка сервера")
+		return
+	}
+
+	httpapi.WriteJSON(w, http.StatusOK, map[string]any{
+		"items": items,
+	})
+}
+
+func (s *Server) ApproveRoomHandler(w http.ResponseWriter, r *http.Request) {
+	roomID, ok := parsePathID(w, r, "room_id", "invalid_room_id", "Некорректный id помещения")
+	if !ok {
+		return
+	}
+
+	err := s.roomRepo.ApproveRoom(r.Context(), roomID)
+	if err != nil {
+		writeModerationRoomError(w, err, "cannot_approve_room", "Нельзя одобрить помещение в текущем статусе")
+		return
+	}
+
+	httpapi.WriteJSON(w, http.StatusOK, map[string]any{
+		"id":     roomID,
+		"status": rooms.StatusPublished,
+	})
+}
+
+func (s *Server) RejectRoomHandler(w http.ResponseWriter, r *http.Request) {
+	roomID, ok := parsePathID(w, r, "room_id", "invalid_room_id", "Некорректный id помещения")
+	if !ok {
+		return
+	}
+
+	var req rejectRoomRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httpapi.WriteError(w, http.StatusBadRequest, "invalid_request", "Некорректное тело запроса")
+		return
+	}
+
+	err := s.roomRepo.RejectRoom(r.Context(), roomID, req.Reason)
+	if err != nil {
+		switch {
+		case errors.Is(err, db.ErrInvalidArgument):
+			httpapi.WriteError(w, http.StatusBadRequest, "invalid_request", "Укажите причину отклонения")
+		default:
+			writeModerationRoomError(w, err, "cannot_reject_room", "Нельзя отклонить помещение в текущем статусе")
+		}
+		return
+	}
+
+	httpapi.WriteJSON(w, http.StatusOK, map[string]any{
+		"id":               roomID,
+		"status":           rooms.StatusRejected,
+		"rejection_reason": req.Reason,
+	})
+}
+
+func (s *Server) ArchiveRoomHandler(w http.ResponseWriter, r *http.Request) {
+	roomID, ok := parsePathID(w, r, "room_id", "invalid_room_id", "Некорректный id помещения")
+	if !ok {
+		return
+	}
+
+	err := s.roomRepo.ArchiveRoom(r.Context(), roomID)
+	if err != nil {
+		writeModerationRoomError(w, err, "cannot_archive_room", "Нельзя архивировать помещение в текущем статусе")
+		return
+	}
+
+	httpapi.WriteJSON(w, http.StatusOK, map[string]any{
+		"id":     roomID,
+		"status": rooms.StatusArchived,
+	})
+}
+
+func writeModerationRoomError(w http.ResponseWriter, err error, conflictCode, conflictMessage string) {
+	switch {
+	case errors.Is(err, db.ErrInvalidID):
+		httpapi.WriteError(w, http.StatusBadRequest, "invalid_room_id", "Некорректный id помещения")
+	case errors.Is(err, db.ErrNotFound):
+		httpapi.WriteError(w, http.StatusNotFound, "room_not_found", "Помещение не найдено")
+	case errors.Is(err, db.ErrConflict):
+		httpapi.WriteError(w, http.StatusConflict, conflictCode, conflictMessage)
+	default:
+		log.Printf("[server] moderation room error: %v", err)
+		httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "Внутренняя ошибка сервера")
+	}
 }

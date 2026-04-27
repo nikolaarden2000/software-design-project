@@ -136,6 +136,57 @@ const (
 			updated_at = now()
 		WHERE id = $1
 		  AND status IN ('draft', 'rejected')`
+
+	queryListModerationRooms = `
+		SELECT
+			r.id,
+			r.location_id,
+			c.name AS company_name,
+			l.city,
+			(l.city || ', ' || l.street || ' ' || l.house_number) AS address,
+			r.title,
+			COALESCE(r.description, '') AS description,
+			r.price,
+			r.capacity,
+			r.available_from,
+			r.available_to,
+			r.images,
+			r.status::text,
+			u.id,
+			u.name,
+			u.email
+		FROM rooms r
+		JOIN locations l ON l.id = r.location_id
+		JOIN companies c ON c.id = l.company_id
+		LEFT JOIN users u ON u.id = r.created_by
+		WHERE r.status = 'pending'
+		ORDER BY r.updated_at ASC, r.id ASC`
+
+	queryApproveRoom = `
+		UPDATE rooms
+		SET
+			status = 'published',
+			rejection_reason = NULL,
+			updated_at = now()
+		WHERE id = $1
+		  AND status = 'pending'`
+
+	queryRejectRoom = `
+		UPDATE rooms
+		SET
+			status = 'rejected',
+			rejection_reason = $2,
+			updated_at = now()
+		WHERE id = $1
+		  AND status = 'pending'`
+
+	queryArchiveRoom = `
+		UPDATE rooms
+		SET
+			status = 'archived',
+			updated_at = now()
+		WHERE id = $1
+		  AND status <> 'archived'`
 )
 
 type Repository struct {
@@ -597,4 +648,134 @@ func stringPtrFromNull(value sql.NullString) *string {
 
 	result := value.String
 	return &result
+}
+
+func (r *Repository) ListModerationRooms(ctx context.Context) ([]ModerationRoom, error) {
+	rows, err := r.q.Query(ctx, queryListModerationRooms)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make([]ModerationRoom, 0)
+
+	for rows.Next() {
+		room, err := scanModerationRoom(rows)
+		if err != nil {
+			return nil, err
+		}
+
+		result = append(result, room)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (r *Repository) ApproveRoom(ctx context.Context, roomID int) error {
+	return r.updateRoomModerationStatus(ctx, queryApproveRoom, roomID)
+}
+
+func (r *Repository) RejectRoom(ctx context.Context, roomID int, reason string) error {
+	if roomID <= 0 {
+		return db.ErrInvalidID
+	}
+
+	reason = strings.TrimSpace(reason)
+	if reason == "" {
+		return db.ErrInvalidArgument
+	}
+
+	tag, err := r.q.Exec(ctx, queryRejectRoom, roomID, reason)
+	if err != nil {
+		return err
+	}
+
+	if tag.RowsAffected() == 0 {
+		return r.moderationUpdateMissReason(ctx, roomID)
+	}
+
+	return nil
+}
+
+func (r *Repository) ArchiveRoom(ctx context.Context, roomID int) error {
+	return r.updateRoomModerationStatus(ctx, queryArchiveRoom, roomID)
+}
+
+func (r *Repository) updateRoomModerationStatus(ctx context.Context, query string, roomID int) error {
+	if roomID <= 0 {
+		return db.ErrInvalidID
+	}
+
+	tag, err := r.q.Exec(ctx, query, roomID)
+	if err != nil {
+		return err
+	}
+
+	if tag.RowsAffected() == 0 {
+		return r.moderationUpdateMissReason(ctx, roomID)
+	}
+
+	return nil
+}
+
+func (r *Repository) moderationUpdateMissReason(ctx context.Context, roomID int) error {
+	var exists bool
+
+	err := r.q.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM rooms WHERE id = $1)`, roomID).Scan(&exists)
+	if err != nil {
+		return err
+	}
+
+	if !exists {
+		return db.ErrNotFound
+	}
+
+	return db.ErrConflict
+}
+
+func scanModerationRoom(row pgx.Row) (ModerationRoom, error) {
+	var room ModerationRoom
+	var availableFrom, availableTo time.Time
+	var creatorID sql.NullInt64
+	var creatorName sql.NullString
+	var creatorEmail sql.NullString
+
+	err := row.Scan(
+		&room.ID,
+		&room.LocationID,
+		&room.CompanyName,
+		&room.City,
+		&room.Address,
+		&room.Title,
+		&room.Description,
+		&room.Price,
+		&room.Capacity,
+		&availableFrom,
+		&availableTo,
+		&room.Images,
+		&room.Status,
+		&creatorID,
+		&creatorName,
+		&creatorEmail,
+	)
+	if err != nil {
+		return ModerationRoom{}, err
+	}
+
+	room.AvailableFrom = availableFrom.Format("15:04")
+	room.AvailableTo = availableTo.Format("15:04")
+
+	if creatorID.Valid {
+		room.CreatedBy = &ModerationRoomCreator{
+			ID:       int(creatorID.Int64),
+			Username: creatorName.String,
+			Email:    creatorEmail.String,
+		}
+	}
+
+	return room, nil
 }

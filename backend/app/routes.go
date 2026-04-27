@@ -128,4 +128,24 @@ func RegisterRoutes(mux *http.ServeMux, authService *auth.AuthService, srv *serv
 		"DELETE /api/superuser/admins/{admin_id}/locations/{location_id}",
 		requireSuperuser(http.HandlerFunc(srv.DeleteAdminLocationAssignmentHandler)),
 	)
+
+	mux.Handle(
+		"GET /api/superuser/rooms/moderation",
+		requireSuperuser(http.HandlerFunc(srv.ModerationRoomsHandler)),
+	)
+
+	mux.Handle(
+		"POST /api/superuser/rooms/{room_id}/approve",
+		requireSuperuser(http.HandlerFunc(srv.ApproveRoomHandler)),
+	)
+
+	mux.Handle(
+		"POST /api/superuser/rooms/{room_id}/reject",
+		requireSuperuser(http.HandlerFunc(srv.RejectRoomHandler)),
+	)
+
+	mux.Handle(
+		"POST /api/superuser/rooms/{room_id}/archive",
+		requireSuperuser(http.HandlerFunc(srv.ArchiveRoomHandler)),
+	)
 }
