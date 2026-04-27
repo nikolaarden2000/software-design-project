@@ -1,14 +1,14 @@
-INSERT INTO companies (name) VALUES
-('ООО «Коворкинг Стандарт»'),
-('ИП Иванов'),
-('ЗАО «Бизнес-Пространство»'),
-('ООО «Деловые Линии»'),
-('АО «Городские Офисы»'),
-('ООО «Профис»'),
-('ИП Петров'),
-('ООО «Элит-Бизнес»'),
-('ЗАО «Столичный Коворкинг»'),
-('ООО «Офис-Хаб»');
+INSERT INTO companies (name, description) VALUES
+('ООО «Коворкинг Стандарт»', 'Сеть коворкингов и переговорных комнат'),
+('ИП Иванов', 'Частные офисные пространства'),
+('ЗАО «Бизнес-Пространство»', 'Бизнес-центры и конференц-залы'),
+('ООО «Деловые Линии»', 'Площадки для деловых мероприятий'),
+('АО «Городские Офисы»', 'Городские офисы и переговорные'),
+('ООО «Профис»', 'Профессиональные офисные пространства'),
+('ИП Петров', 'Небольшие офисы и переговорные'),
+('ООО «Элит-Бизнес»', 'Премиальные бизнес-пространства'),
+('ЗАО «Столичный Коворкинг»', 'Коворкинги в деловых районах'),
+('ООО «Офис-Хаб»', 'Офисные хабы и пространства для встреч');
 
 INSERT INTO locations (company_id, city, street, house_number, latitude, longitude) VALUES
 -- Для компании 1 (ООО «Коворкинг Стандарт»)
@@ -125,11 +125,16 @@ INSERT INTO rooms (location_id, title, capacity, price, description, images, ava
 (20, 'Зал "Невский"', 12, 5100, 'Зал для семинаров и презентаций', ARRAY['/images/room8.jpg', '/images/room9.jpg', '/images/room10.jpg'], '09:00', '21:00'),
 (20, 'Студия "Арт"', 25, 7800, 'Творческое пространство для мероприятий', ARRAY['/images/room11.jpg', '/images/room12.jpg'], '08:00', '22:00');
 
--- Добавляем пользователей
 INSERT INTO users (email, name, password_hash, role) VALUES
-('test1@test1.ru', 'test1@test1.ru', '1$1$65536$4$32$f977bb411a8f9d1f4fd6206cccb7243b8e010d0eff328d71ec3c9f6875733535$ea2e67c1523536cea4f98ee8e8ccfb0840e387a9cfcc60333b007b806295ca11', 'client'),
-('test2@test2.ru', 'test2@test2.ru', '1$1$65536$4$32$29411998db1782874bef5253703f54e436c444e7650f5ed6bdc1afe2493e8b8f$975c579df707411104fab46547f0276607a2eea35029b63c329ab75d67aaf64d', 'client'),
-('test3@test3.ru', 'test3@test3.ru', '1$1$65536$4$32$9cea3bf2d0641ef009a63db28740b865c02448decb5dd19c3cd49435744d38f0$eb22b174f17e3ec9c7665e99e916abfaa49c973c795cb7ff3b92d7da254a653f', 'client');
+('test1@test1.ru', 'Тестовый пользователь 1', '1$1$65536$4$32$00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff$b264db18ed4ce3340c4f3f3b31f619d926cb6f87f0a29f5b00e972ba6579e95b', 'user'),
+('test2@test2.ru', 'Тестовый пользователь 2', '1$1$65536$4$32$00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff$b264db18ed4ce3340c4f3f3b31f619d926cb6f87f0a29f5b00e972ba6579e95b', 'user'),
+('test3@test3.ru', 'Тестовый пользователь 3', '1$1$65536$4$32$00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff$b264db18ed4ce3340c4f3f3b31f619d926cb6f87f0a29f5b00e972ba6579e95b', 'user'),
+('superuser@mail.com', 'Суперпользователь', '1$1$65536$4$32$00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff$b264db18ed4ce3340c4f3f3b31f619d926cb6f87f0a29f5b00e972ba6579e95b', 'superuser'),
+('admin-abc@mail.com', 'Администратор ABC', '1$1$65536$4$32$00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff$b264db18ed4ce3340c4f3f3b31f619d926cb6f87f0a29f5b00e972ba6579e95b', 'admin');
+
+INSERT INTO admin_locations (admin_id, location_id) VALUES
+(5, 1),
+(5, 2);
 
 INSERT INTO bookings (user_id, room_id, start_time, end_time, status, total_price) VALUES
 (1, 1, '2025-09-19 10:00:00+03', '2025-09-19 12:00:00+03', 'booked', 5000),
