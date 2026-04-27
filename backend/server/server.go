@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/nikolaarden2000/software-design-project/backend/bookings"
+	"github.com/nikolaarden2000/software-design-project/backend/companies"
+	"github.com/nikolaarden2000/software-design-project/backend/locations"
 	"github.com/nikolaarden2000/software-design-project/backend/rooms"
 	"github.com/nikolaarden2000/software-design-project/backend/users"
 )
@@ -15,6 +17,19 @@ type AuthService interface {
 	Login(ctx context.Context, email, password string, w http.ResponseWriter) (*users.User, error)
 	Logout(w http.ResponseWriter, r *http.Request)
 	GetUserByID(ctx context.Context, id int) (*users.User, error)
+}
+
+type CompanyRepo interface {
+	ListCompanies(ctx context.Context) ([]companies.Company, error)
+	CreateCompany(ctx context.Context, name, description string) (*companies.Company, error)
+	ExistsByID(ctx context.Context, id int) (bool, error)
+}
+
+type LocationRepo interface {
+	ListLocations(ctx context.Context, companyID *int, city *string) ([]locations.Location, error)
+	CreateLocation(ctx context.Context, companyID int, city string, address string, lat float64, lng float64, timezone string) (*locations.Location, error)
+	GetLocationByID(ctx context.Context, id int) (*locations.Location, error)
+	ExistsByID(ctx context.Context, id int) (bool, error)
 }
 
 type RoomRepo interface {
@@ -31,15 +46,25 @@ type BookingRepo interface {
 }
 
 type Server struct {
-	auth        AuthService
-	roomRepo    RoomRepo
-	bookingRepo BookingRepo
+	auth         AuthService
+	companyRepo  CompanyRepo
+	locationRepo LocationRepo
+	roomRepo     RoomRepo
+	bookingRepo  BookingRepo
 }
 
-func NewServer(auth AuthService, roomRepo RoomRepo, bookingRepo BookingRepo) *Server {
+func NewServer(
+	auth AuthService,
+	companyRepo CompanyRepo,
+	locationRepo LocationRepo,
+	roomRepo RoomRepo,
+	bookingRepo BookingRepo,
+) *Server {
 	return &Server{
-		auth:        auth,
-		roomRepo:    roomRepo,
-		bookingRepo: bookingRepo,
+		auth:         auth,
+		companyRepo:  companyRepo,
+		locationRepo: locationRepo,
+		roomRepo:     roomRepo,
+		bookingRepo:  bookingRepo,
 	}
 }

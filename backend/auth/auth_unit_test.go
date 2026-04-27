@@ -529,44 +529,139 @@ func TestVerifyRequest_DecisionTable(t *testing.T) {
 	}
 }
 
-func TestAuthMiddleware_AuthenticatedRequest_InjectsUserIDIntoContext(t *testing.T) {
-	svc := newTestAuthService(&mockRepo{})
+func TestOptionalUserMiddleware_AuthenticatedRequest_InjectsUserIntoContext(t *testing.T) {
+	repo := &mockRepo{
+		getUserByID: func(_ context.Context, id int) (*users.User, error) {
+			if id != 42 {
+				t.Fatalf("GetUserByID id: got %d, want 42", id)
+			}
+
+			return &users.User{
+				ID:       42,
+				Username: "alice",
+				Email:    "alice@example.com",
+				Role:     users.RoleAdmin,
+			}, nil
+		},
+	}
+
+	svc := newTestAuthService(repo)
 	sessionID, _ := svc.sessionMgr.Create(42)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.AddCookie(&http.Cookie{Name: "session_id", Value: sessionID})
 
 	var gotUID int
-	var gotOK bool
+	var gotUIDOK bool
+	var gotUser *users.User
+	var gotUserOK bool
+
 	next := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
-		gotUID, gotOK = UserIDFromContext(r.Context())
+		gotUID, gotUIDOK = UserIDFromContext(r.Context())
+		gotUser, gotUserOK = UserFromContext(r.Context())
 	})
 
-	svc.AuthMiddleware(next).ServeHTTP(httptest.NewRecorder(), req)
+	svc.OptionalUserMiddleware(next).ServeHTTP(httptest.NewRecorder(), req)
 
-	if !gotOK || gotUID != 42 {
-		t.Errorf("context: got uid=%d ok=%v, want uid=42 ok=true", gotUID, gotOK)
+	if !gotUIDOK || gotUID != 42 {
+		t.Errorf("context user id: got uid=%d ok=%v, want uid=42 ok=true", gotUID, gotUIDOK)
+	}
+
+	if !gotUserOK || gotUser == nil {
+		t.Fatal("expected user in context")
+	}
+
+	if gotUser.ID != 42 {
+		t.Errorf("context user: got id=%d, want 42", gotUser.ID)
+	}
+
+	if gotUser.Role != users.RoleAdmin {
+		t.Errorf("context user role: got %q, want %q", gotUser.Role, users.RoleAdmin)
 	}
 }
 
-func TestAuthMiddleware_UnauthenticatedRequest_CallsNextWithoutUserID(t *testing.T) {
+func TestOptionalUserMiddleware_UnauthenticatedRequest_CallsNextWithoutUser(t *testing.T) {
 	svc := newTestAuthService(&mockRepo{})
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
 	nextCalled := false
-	var gotOK bool
+	var gotUIDOK bool
+	var gotUserOK bool
+
 	next := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		nextCalled = true
-		_, gotOK = UserIDFromContext(r.Context())
+		_, gotUIDOK = UserIDFromContext(r.Context())
+		_, gotUserOK = UserFromContext(r.Context())
 	})
 
-	svc.AuthMiddleware(next).ServeHTTP(httptest.NewRecorder(), req)
+	svc.OptionalUserMiddleware(next).ServeHTTP(httptest.NewRecorder(), req)
 
 	if !nextCalled {
 		t.Error("next handler must be called even for unauthenticated request")
 	}
-	if gotOK {
+
+	if gotUIDOK {
 		t.Error("UserID must not be in context for unauthenticated request")
+	}
+
+	if gotUserOK {
+		t.Error("User must not be in context for unauthenticated request")
+	}
+}
+
+func TestRequireAuth_UnauthenticatedRequest_ReturnsUnauthorized(t *testing.T) {
+	svc := newTestAuthService(&mockRepo{})
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+
+	nextCalled := false
+	next := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
+		nextCalled = true
+	})
+
+	svc.RequireAuth(next).ServeHTTP(w, req)
+
+	if nextCalled {
+		t.Error("next handler must not be called for unauthenticated request")
+	}
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("status: got %d, want %d", w.Code, http.StatusUnauthorized)
+	}
+}
+
+func TestRequireRole_ForWrongRole_ReturnsForbidden(t *testing.T) {
+	repo := &mockRepo{
+		getUserByID: func(_ context.Context, id int) (*users.User, error) {
+			return &users.User{
+				ID:       id,
+				Username: "alice",
+				Email:    "alice@example.com",
+				Role:     users.RoleUser,
+			}, nil
+		},
+	}
+
+	svc := newTestAuthService(repo)
+	sessionID, _ := svc.sessionMgr.Create(42)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(&http.Cookie{Name: "session_id", Value: sessionID})
+	w := httptest.NewRecorder()
+
+	nextCalled := false
+	next := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
+		nextCalled = true
+	})
+
+	svc.RequireRole(users.RoleAdmin, users.RoleSuperuser)(next).ServeHTTP(w, req)
+
+	if nextCalled {
+		t.Error("next handler must not be called for forbidden request")
+	}
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("status: got %d, want %d", w.Code, http.StatusForbidden)
 	}
 }
 

@@ -6,9 +6,13 @@ import (
 	"github.com/nikolaarden2000/software-design-project/backend/auth"
 	"github.com/nikolaarden2000/software-design-project/backend/httpapi"
 	"github.com/nikolaarden2000/software-design-project/backend/server"
+	"github.com/nikolaarden2000/software-design-project/backend/users"
 )
 
 func RegisterRoutes(mux *http.ServeMux, authService *auth.AuthService, srv *server.Server) {
+	requireAuth := authService.RequireAuth
+	requireSuperuser := authService.RequireRole(users.RoleSuperuser)
+
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
 		httpapi.WriteJSON(w, http.StatusOK, map[string]string{
 			"status": "ok",
@@ -17,7 +21,7 @@ func RegisterRoutes(mux *http.ServeMux, authService *auth.AuthService, srv *serv
 
 	mux.Handle(
 		"GET /api/me",
-		authService.AuthMiddleware(http.HandlerFunc(srv.MeHandler)),
+		authService.OptionalUserMiddleware(http.HandlerFunc(srv.MeHandler)),
 	)
 
 	mux.HandleFunc("POST /api/register", srv.RegisterHandler)
@@ -31,16 +35,36 @@ func RegisterRoutes(mux *http.ServeMux, authService *auth.AuthService, srv *serv
 
 	mux.Handle(
 		"POST /api/bookings",
-		authService.AuthMiddleware(http.HandlerFunc(srv.BookingHandler)),
+		requireAuth(http.HandlerFunc(srv.BookingHandler)),
 	)
 
 	mux.Handle(
 		"GET /api/me/bookings",
-		authService.AuthMiddleware(http.HandlerFunc(srv.MyBookingsHandler)),
+		requireAuth(http.HandlerFunc(srv.MyBookingsHandler)),
 	)
 
 	mux.Handle(
 		"POST /api/bookings/{id}/cancel",
-		authService.AuthMiddleware(http.HandlerFunc(srv.CancelBookingHandler)),
+		requireAuth(http.HandlerFunc(srv.CancelBookingHandler)),
+	)
+
+	mux.Handle(
+		"GET /api/superuser/companies",
+		requireSuperuser(http.HandlerFunc(srv.ListCompaniesHandler)),
+	)
+
+	mux.Handle(
+		"POST /api/superuser/companies",
+		requireSuperuser(http.HandlerFunc(srv.CreateCompanyHandler)),
+	)
+
+	mux.Handle(
+		"GET /api/superuser/locations",
+		requireSuperuser(http.HandlerFunc(srv.ListLocationsHandler)),
+	)
+
+	mux.Handle(
+		"POST /api/superuser/locations",
+		requireSuperuser(http.HandlerFunc(srv.CreateLocationHandler)),
 	)
 }

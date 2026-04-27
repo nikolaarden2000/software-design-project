@@ -206,17 +206,6 @@ func (s *AuthService) VerifyRequest(r *http.Request) (int, bool) {
 	return s.sessionMgr.Get(c.Value)
 }
 
-func (s *AuthService) AuthMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if uid, ok := s.VerifyRequest(r); ok {
-			ctx := context.WithValue(r.Context(), KeyUserID, uid)
-			next.ServeHTTP(w, r.WithContext(ctx))
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
 func (s *AuthService) GetUserByID(ctx context.Context, id int) (*users.User, error) {
 	return s.userRepo.GetUserByID(ctx, id)
 }

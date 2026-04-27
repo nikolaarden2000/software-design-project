@@ -122,18 +122,8 @@ func (s *Server) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) MeHandler(w http.ResponseWriter, r *http.Request) {
-	uid, ok := auth.UserIDFromContext(r.Context())
-	if !ok || uid <= 0 {
-		httpapi.WriteJSON(w, http.StatusOK, map[string]any{
-			"authenticated": false,
-			"user":          nil,
-		})
-		return
-	}
-
-	u, err := s.auth.GetUserByID(r.Context(), uid)
-	if err != nil {
-		log.Printf("[server] MeHandler: GetUserByID(%d): %v", uid, err)
+	u, ok := auth.UserFromContext(r.Context())
+	if !ok || u == nil {
 		httpapi.WriteJSON(w, http.StatusOK, map[string]any{
 			"authenticated": false,
 			"user":          nil,
@@ -266,11 +256,13 @@ func (s *Server) RoomAvailabilityHandler(w http.ResponseWriter, r *http.Request)
 }
 
 func (s *Server) BookingHandler(w http.ResponseWriter, r *http.Request) {
-	uid, ok := auth.UserIDFromContext(r.Context())
-	if !ok || uid <= 0 {
+	u, ok := auth.UserFromContext(r.Context())
+	if !ok || u == nil {
 		httpapi.WriteError(w, http.StatusUnauthorized, "unauthorized", "Необходимо войти в аккаунт")
 		return
 	}
+
+	uid := u.ID
 
 	var req bookingRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -308,11 +300,13 @@ func (s *Server) BookingHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) MyBookingsHandler(w http.ResponseWriter, r *http.Request) {
-	uid, ok := auth.UserIDFromContext(r.Context())
-	if !ok || uid <= 0 {
+	u, ok := auth.UserFromContext(r.Context())
+	if !ok || u == nil {
 		httpapi.WriteError(w, http.StatusUnauthorized, "unauthorized", "Необходимо войти в аккаунт")
 		return
 	}
+
+	uid := u.ID
 
 	bookings, err := s.bookingRepo.GetUserBookings(r.Context(), uid, time.Now())
 	if err != nil {
@@ -327,11 +321,13 @@ func (s *Server) MyBookingsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) CancelBookingHandler(w http.ResponseWriter, r *http.Request) {
-	uid, ok := auth.UserIDFromContext(r.Context())
-	if !ok || uid <= 0 {
+	u, ok := auth.UserFromContext(r.Context())
+	if !ok || u == nil {
 		httpapi.WriteError(w, http.StatusUnauthorized, "unauthorized", "Необходимо войти в аккаунт")
 		return
 	}
+
+	uid := u.ID
 
 	bookingID, ok := parsePathID(w, r, "id", "invalid_booking_id", "Некорректный id бронирования")
 	if !ok {

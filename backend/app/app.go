@@ -10,6 +10,8 @@ import (
 
 	"github.com/nikolaarden2000/software-design-project/backend/auth"
 	"github.com/nikolaarden2000/software-design-project/backend/bookings"
+	"github.com/nikolaarden2000/software-design-project/backend/companies"
+	"github.com/nikolaarden2000/software-design-project/backend/locations"
 	"github.com/nikolaarden2000/software-design-project/backend/rooms"
 	"github.com/nikolaarden2000/software-design-project/backend/server"
 	"github.com/nikolaarden2000/software-design-project/backend/users"
@@ -33,6 +35,8 @@ func New(ctx context.Context, cfg Config) (*App, error) {
 	}
 
 	userRepo := users.NewRepository(pool)
+	companyRepo := companies.NewRepository(pool)
+	locationRepo := locations.NewRepository(pool)
 	roomRepo := rooms.NewRepository(pool)
 	bookingRepo := bookings.NewRepository(pool)
 
@@ -43,7 +47,13 @@ func New(ctx context.Context, cfg Config) (*App, error) {
 		5*time.Minute,
 	)
 
-	apiServer := server.NewServer(authService, roomRepo, bookingRepo)
+	apiServer := server.NewServer(
+		authService,
+		companyRepo,
+		locationRepo,
+		roomRepo,
+		bookingRepo,
+	)
 
 	mux := http.NewServeMux()
 	RegisterRoutes(mux, authService, apiServer)
