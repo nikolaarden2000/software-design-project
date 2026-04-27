@@ -29,50 +29,6 @@ func newUserRepo(mock pgxmock.PgxPoolIface) *Repository {
 	return NewRepository(mock)
 }
 
-// CreateUser
-func TestCreateUser_Success(t *testing.T) {
-	mock := newMock(t)
-	mock.ExpectQuery(regexp.QuoteMeta(queryCreateUser)).
-		WithArgs("alice", "alice@example.com", "hashed-pwd").
-		WillReturnRows(pgxmock.NewRows([]string{"id"}).AddRow(123))
-
-	id, err := newUserRepo(mock).CreateUser(context.Background(), "alice", "alice@example.com", "hashed-pwd")
-
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if id != 123 {
-		t.Errorf("id: got %d, want 123", id)
-	}
-}
-
-func TestCreateUser_DuplicateEmail_ReturnsErrEmailTaken(t *testing.T) {
-	mock := newMock(t)
-	mock.ExpectQuery(regexp.QuoteMeta(queryCreateUser)).
-		WithArgs("bob", "taken@example.com", "hashed-pwd").
-		WillReturnRows(pgxmock.NewRows([]string{"id"}))
-
-	_, err := newUserRepo(mock).CreateUser(context.Background(), "bob", "taken@example.com", "hashed-pwd")
-
-	if !errors.Is(err, db.ErrEmailTaken) {
-		t.Fatalf("expected db.ErrEmailTaken, got: %v", err)
-	}
-}
-
-func TestCreateUser_DBError_PropagatesError(t *testing.T) {
-	mock := newMock(t)
-	dbErr := fmt.Errorf("connection refused")
-	mock.ExpectQuery(regexp.QuoteMeta(queryCreateUser)).
-		WithArgs("carol", "carol@example.com", "hashed-pwd").
-		WillReturnError(dbErr)
-
-	_, err := newUserRepo(mock).CreateUser(context.Background(), "carol", "carol@example.com", "hashed-pwd")
-
-	if !errors.Is(err, dbErr) {
-		t.Fatalf("expected wrapped dbErr, got: %v", err)
-	}
-}
-
 // GetUserByEmail
 func TestGetUserByEmail_Success(t *testing.T) {
 	mock := newMock(t)

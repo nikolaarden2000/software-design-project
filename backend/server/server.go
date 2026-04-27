@@ -15,6 +15,7 @@ import (
 type AuthService interface {
 	Register(ctx context.Context, username, email, password string) (int, error)
 	Login(ctx context.Context, email, password string, w http.ResponseWriter) (*users.User, error)
+	RegisterWithRole(ctx context.Context, username, email, password, role string) (int, error)
 	Logout(w http.ResponseWriter, r *http.Request)
 	GetUserByID(ctx context.Context, id int) (*users.User, error)
 }
@@ -32,6 +33,12 @@ type LocationRepo interface {
 	ExistsByID(ctx context.Context, id int) (bool, error)
 }
 
+type UserRepo interface {
+	ListAdmins(ctx context.Context) ([]users.Admin, error)
+	AssignAdminToLocation(ctx context.Context, adminID, locationID int) error
+	DeleteAdminLocationAssignment(ctx context.Context, adminID, locationID int) error
+}
+
 type RoomRepo interface {
 	GetRoomsBatchByCity(ctx context.Context, lastID, limit int, city string) ([]rooms.Room, error)
 	GetCompaniesByCity(ctx context.Context, city string) ([]string, error)
@@ -47,6 +54,7 @@ type BookingRepo interface {
 
 type Server struct {
 	auth         AuthService
+	userRepo     UserRepo
 	companyRepo  CompanyRepo
 	locationRepo LocationRepo
 	roomRepo     RoomRepo
@@ -55,6 +63,7 @@ type Server struct {
 
 func NewServer(
 	auth AuthService,
+	userRepo UserRepo,
 	companyRepo CompanyRepo,
 	locationRepo LocationRepo,
 	roomRepo RoomRepo,
@@ -62,6 +71,7 @@ func NewServer(
 ) *Server {
 	return &Server{
 		auth:         auth,
+		userRepo:     userRepo,
 		companyRepo:  companyRepo,
 		locationRepo: locationRepo,
 		roomRepo:     roomRepo,

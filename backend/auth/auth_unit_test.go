@@ -16,10 +16,18 @@ import (
 var errNotConfigured = errors.New("mock: method not configured")
 
 type mockRepo struct {
-	createUser     func(ctx context.Context, username, email, hash string) (int, error)
-	getUserByEmail func(ctx context.Context, email string) (*users.User, error)
-	isEmailTaken   func(ctx context.Context, email string) (bool, error)
-	getUserByID    func(ctx context.Context, id int) (*users.User, error)
+	createUser         func(ctx context.Context, username, email, hash string) (int, error)
+	getUserByEmail     func(ctx context.Context, email string) (*users.User, error)
+	createUserWithRole func(ctx context.Context, username, email, hash, role string) (int, error)
+	isEmailTaken       func(ctx context.Context, email string) (bool, error)
+	getUserByID        func(ctx context.Context, id int) (*users.User, error)
+}
+
+func (m *mockRepo) CreateUserWithRole(ctx context.Context, username, email, hash, role string) (int, error) {
+	if m.createUserWithRole != nil {
+		return m.createUserWithRole(ctx, username, email, hash, role)
+	}
+	return 0, errNotConfigured
 }
 
 func (m *mockRepo) CreateUser(ctx context.Context, username, email, hash string) (int, error) {

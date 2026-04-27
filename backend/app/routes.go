@@ -67,4 +67,24 @@ func RegisterRoutes(mux *http.ServeMux, authService *auth.AuthService, srv *serv
 		"POST /api/superuser/locations",
 		requireSuperuser(http.HandlerFunc(srv.CreateLocationHandler)),
 	)
+
+	mux.Handle(
+		"GET /api/superuser/admins",
+		requireSuperuser(http.HandlerFunc(srv.ListAdminsHandler)),
+	)
+
+	mux.Handle(
+		"POST /api/superuser/admins",
+		requireSuperuser(http.HandlerFunc(srv.CreateAdminHandler)),
+	)
+
+	mux.Handle(
+		"POST /api/superuser/admins/{admin_id}/locations",
+		requireSuperuser(http.HandlerFunc(srv.AssignAdminToLocationHandler)),
+	)
+
+	mux.Handle(
+		"DELETE /api/superuser/admins/{admin_id}/locations/{location_id}",
+		requireSuperuser(http.HandlerFunc(srv.DeleteAdminLocationAssignmentHandler)),
+	)
 }

@@ -49,6 +49,7 @@ func New(ctx context.Context, cfg Config) (*App, error) {
 
 	apiServer := server.NewServer(
 		authService,
+		userRepo,
 		companyRepo,
 		locationRepo,
 		roomRepo,

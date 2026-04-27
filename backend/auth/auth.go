@@ -62,7 +62,7 @@ func validatePassword(password string) error {
 }
 
 type UserRepo interface {
-	CreateUser(ctx context.Context, username, email, passwordHash string) (int, error)
+	CreateUserWithRole(ctx context.Context, username, email, passwordHash, role string) (int, error)
 	GetUserByEmail(ctx context.Context, email string) (*users.User, error)
 	IsEmailTaken(ctx context.Context, email string) (bool, error)
 	GetUserByID(ctx context.Context, id int) (*users.User, error)
@@ -117,6 +117,14 @@ func (s *AuthService) newCookie(value string, maxAge int) *http.Cookie {
 }
 
 func (s *AuthService) Register(ctx context.Context, username, email, password string) (int, error) {
+	return s.RegisterWithRole(ctx, username, email, password, users.RoleUser)
+}
+
+func (s *AuthService) RegisterWithRole(ctx context.Context, username, email, password, role string) (int, error) {
+	if !users.IsValidRole(role) {
+		return 0, fmt.Errorf("auth: invalid role: %s", role)
+	}
+
 	username = strings.TrimSpace(username)
 	if username == "" {
 		return 0, ErrEmptyUsername
@@ -147,12 +155,12 @@ func (s *AuthService) Register(ctx context.Context, username, email, password st
 		return 0, fmt.Errorf("auth: hashing password: %w", err)
 	}
 
-	id, err := s.userRepo.CreateUser(ctx, username, email, hash)
+	id, err := s.userRepo.CreateUserWithRole(ctx, username, email, hash, role)
 	if err != nil {
-		return 0, fmt.Errorf("auth: creating user: %w", err)
+		return 0, fmt.Errorf("auth: creating user with role: %w", err)
 	}
 
-	log.Printf("[auth] user registered: id=%d email=%s", id, email)
+	log.Printf("[auth] user registered: id=%d email=%s role=%s", id, email, role)
 	return id, nil
 }
 
