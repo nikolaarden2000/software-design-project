@@ -69,6 +69,67 @@ const (
 	queryCancelBooking = `
 		UPDATE bookings SET status = 'canceled'
 		WHERE id = $1 AND user_id = $2`
+
+	queryListAdminBookings = `
+		SELECT
+			b.id,
+			r.id AS room_id,
+			r.title AS room_title,
+			l.id AS location_id,
+			(l.city || ', ' || l.street || ' ' || l.house_number) AS location_address,
+			u.id AS user_id,
+			u.email AS user_email,
+			u.name AS user_username,
+			b.start_time,
+			b.end_time,
+			b.total_price,
+			b.status::text,
+			l.timezone
+		FROM bookings b
+		JOIN rooms r ON r.id = b.room_id
+		JOIN locations l ON l.id = r.location_id
+		JOIN users u ON u.id = b.user_id
+		WHERE (
+			$1::bool
+			OR EXISTS (
+				SELECT 1
+				FROM admin_locations al
+				WHERE al.location_id = l.id
+				  AND al.admin_id = $2
+			)
+		)
+		  AND ($3::int IS NULL OR l.id = $3)
+		  AND ($4::text IS NULL OR b.status::text = $4)
+		ORDER BY b.id DESC`
+
+	queryGetAdminBookingForCancel = `
+		SELECT
+			b.status::text,
+			b.start_time,
+			b.end_time,
+			EXISTS (
+				SELECT 1
+				FROM bookings b2
+				JOIN rooms r ON r.id = b2.room_id
+				JOIN locations l ON l.id = r.location_id
+				WHERE b2.id = $1
+				  AND (
+				  	$2::bool
+				  	OR EXISTS (
+				  		SELECT 1
+				  		FROM admin_locations al
+				  		WHERE al.location_id = l.id
+				  		  AND al.admin_id = $3
+				  	)
+				  )
+			) AS accessible
+		FROM bookings b
+		WHERE b.id = $1`
+
+	queryCancelAdminBooking = `
+		UPDATE bookings
+		SET status = 'canceled'
+		WHERE id = $1`
 )
 
 type Repository struct {
@@ -359,4 +420,145 @@ func (r *Repository) CancelBooking(ctx context.Context, bookingID, userID int, n
 
 	_, err = r.q.Exec(ctx, queryCancelBooking, bookingID, userID)
 	return err
+}
+
+func (r *Repository) ListAdminBookings(
+	ctx context.Context,
+	adminID int,
+	includeAll bool,
+	locationID *int,
+	status *string,
+	now time.Time,
+) ([]AdminBookingItem, error) {
+	if adminID <= 0 && !includeAll {
+		return nil, db.ErrInvalidID
+	}
+
+	now = coalesceTime(now)
+
+	var locationParam any
+	if locationID != nil {
+		if *locationID <= 0 {
+			return nil, db.ErrInvalidID
+		}
+		locationParam = *locationID
+	}
+
+	var statusParam any
+	if status != nil {
+		switch *status {
+		case "booked", "canceled", "in_use", "finished":
+			statusParam = dbStatusForFilter(*status)
+		default:
+			return nil, db.ErrInvalidArgument
+		}
+	}
+
+	rows, err := r.q.Query(ctx, queryListAdminBookings, includeAll, adminID, locationParam, statusParam)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	items := make([]AdminBookingItem, 0)
+
+	for rows.Next() {
+		var item AdminBookingItem
+		var start, end time.Time
+		var baseStatus string
+		var tzName string
+
+		if err := rows.Scan(
+			&item.ID,
+			&item.RoomID,
+			&item.RoomTitle,
+			&item.LocationID,
+			&item.LocationAddress,
+			&item.UserID,
+			&item.UserEmail,
+			&item.UserUsername,
+			&start,
+			&end,
+			&item.TotalPrice,
+			&baseStatus,
+			&tzName,
+		); err != nil {
+			return nil, err
+		}
+
+		loc, err := loadLocation(tzName)
+		if err != nil {
+			return nil, fmt.Errorf("ListAdminBookings: booking %d: %w", item.ID, err)
+		}
+
+		item.Date = start.In(loc).Format("2006-01-02")
+		item.StartTime = start.In(loc).Format("15:04")
+		item.EndTime = end.In(loc).Format("15:04")
+		item.Status = resolveStatus(baseStatus, start, end, now)
+
+		if status != nil && item.Status != *status {
+			continue
+		}
+
+		items = append(items, item)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return items, nil
+}
+
+func (r *Repository) CancelAdminBooking(ctx context.Context, adminID int, includeAll bool, bookingID int, now time.Time) error {
+	if bookingID <= 0 {
+		return db.ErrInvalidID
+	}
+
+	if adminID <= 0 && !includeAll {
+		return db.ErrInvalidID
+	}
+
+	now = coalesceTime(now)
+
+	var baseStatus string
+	var startTime, endTime time.Time
+	var accessible bool
+
+	err := r.q.QueryRow(ctx, queryGetAdminBookingForCancel, bookingID, includeAll, adminID).
+		Scan(&baseStatus, &startTime, &endTime, &accessible)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return db.ErrNotFound
+		}
+		return err
+	}
+
+	if !accessible {
+		return db.ErrForbidden
+	}
+
+	if resolved := resolveStatus(baseStatus, startTime, endTime, now); resolved != "booked" {
+		return db.ErrConflict
+	}
+
+	tag, err := r.q.Exec(ctx, queryCancelAdminBooking, bookingID)
+	if err != nil {
+		return err
+	}
+
+	if tag.RowsAffected() == 0 {
+		return db.ErrNotFound
+	}
+
+	return nil
+}
+
+func dbStatusForFilter(status string) string {
+	switch status {
+	case "booked", "in_use", "finished":
+		return "booked"
+	default:
+		return status
+	}
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/nikolaarden2000/software-design-project/backend/auth"
 	"github.com/nikolaarden2000/software-design-project/backend/db"
@@ -237,4 +238,89 @@ func currentUserFromRequest(w http.ResponseWriter, r *http.Request) (*users.User
 	}
 
 	return currentUser, true
+}
+
+type cancelAdminBookingRequest struct {
+	Reason string `json:"reason"`
+}
+
+func (s *Server) AdminBookingsHandler(w http.ResponseWriter, r *http.Request) {
+	currentUser, ok := currentUserFromRequest(w, r)
+	if !ok {
+		return
+	}
+
+	locationID, ok := optionalIntQuery(w, r, "location_id", "invalid_location_id", "Некорректный location_id")
+	if !ok {
+		return
+	}
+
+	status := optionalStringQuery(r, "status")
+
+	items, err := s.bookingRepo.ListAdminBookings(
+		r.Context(),
+		currentUser.ID,
+		currentUser.Role == users.RoleSuperuser,
+		locationID,
+		status,
+		time.Now(),
+	)
+	if err != nil {
+		switch {
+		case errors.Is(err, db.ErrInvalidID), errors.Is(err, db.ErrInvalidArgument):
+			httpapi.WriteError(w, http.StatusBadRequest, "invalid_request", "Некорректные параметры запроса")
+		default:
+			log.Printf("[server] AdminBookingsHandler: %v", err)
+			httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "Внутренняя ошибка сервера")
+		}
+		return
+	}
+
+	httpapi.WriteJSON(w, http.StatusOK, map[string]any{
+		"items": items,
+	})
+}
+
+func (s *Server) CancelAdminBookingHandler(w http.ResponseWriter, r *http.Request) {
+	currentUser, ok := currentUserFromRequest(w, r)
+	if !ok {
+		return
+	}
+
+	bookingID, ok := parsePathID(w, r, "booking_id", "invalid_booking_id", "Некорректный id бронирования")
+	if !ok {
+		return
+	}
+
+	var req cancelAdminBookingRequest
+	_ = json.NewDecoder(r.Body).Decode(&req)
+
+	err := s.bookingRepo.CancelAdminBooking(
+		r.Context(),
+		currentUser.ID,
+		currentUser.Role == users.RoleSuperuser,
+		bookingID,
+		time.Now(),
+	)
+	if err != nil {
+		switch {
+		case errors.Is(err, db.ErrInvalidID):
+			httpapi.WriteError(w, http.StatusBadRequest, "invalid_booking_id", "Некорректный id бронирования")
+		case errors.Is(err, db.ErrForbidden):
+			httpapi.WriteError(w, http.StatusForbidden, "forbidden", "Недостаточно прав")
+		case errors.Is(err, db.ErrNotFound):
+			httpapi.WriteError(w, http.StatusNotFound, "booking_not_found", "Бронирование не найдено")
+		case errors.Is(err, db.ErrConflict):
+			httpapi.WriteError(w, http.StatusConflict, "cannot_cancel_booking", "Нельзя отменить бронирование в текущем состоянии")
+		default:
+			log.Printf("[server] CancelAdminBookingHandler: %v", err)
+			httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "Внутренняя ошибка сервера")
+		}
+		return
+	}
+
+	httpapi.WriteJSON(w, http.StatusOK, map[string]any{
+		"id":     bookingID,
+		"status": "canceled",
+	})
 }

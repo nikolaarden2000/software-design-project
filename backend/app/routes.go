@@ -80,6 +80,16 @@ func RegisterRoutes(mux *http.ServeMux, authService *auth.AuthService, srv *serv
 	)
 
 	mux.Handle(
+		"GET /api/admin/bookings",
+		requireAdmin(http.HandlerFunc(srv.AdminBookingsHandler)),
+	)
+
+	mux.Handle(
+		"POST /api/admin/bookings/{booking_id}/cancel",
+		requireAdmin(http.HandlerFunc(srv.CancelAdminBookingHandler)),
+	)
+
+	mux.Handle(
 		"GET /api/superuser/companies",
 		requireSuperuser(http.HandlerFunc(srv.ListCompaniesHandler)),
 	)
