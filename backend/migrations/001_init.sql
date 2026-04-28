@@ -56,6 +56,9 @@ CREATE TABLE IF NOT EXISTS rooms (
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
 
+  booking_disabled BOOLEAN NOT NULL DEFAULT false,
+  archive_scheduled_for TIMESTAMP WITH TIME ZONE,
+
   CONSTRAINT images_limit CHECK (coalesce(array_length(images, 1), 0) <= 5),
   CONSTRAINT room_capacity_positive CHECK (capacity > 0),
   CONSTRAINT room_price_positive CHECK (price > 0),
@@ -64,6 +67,8 @@ CREATE TABLE IF NOT EXISTS rooms (
 
 CREATE INDEX idx_rooms_location_status ON rooms(location_id, status);
 CREATE INDEX idx_rooms_status ON rooms(status);
+CREATE INDEX idx_rooms_booking_disabled ON rooms(booking_disabled);
+CREATE INDEX idx_rooms_archive_scheduled_for ON rooms(archive_scheduled_for) WHERE archive_scheduled_for IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS bookings (
   id SERIAL PRIMARY KEY,
