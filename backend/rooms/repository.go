@@ -196,9 +196,11 @@ const (
 		UPDATE rooms
 		SET
 			status = 'archived',
+			booking_disabled = true,
+			archive_scheduled_for = NULL,
 			updated_at = now()
 		WHERE id = $1
-		  AND status <> 'archived'`
+			AND status IN ('draft', 'pending', 'rejected')`
 
 	queryGetLastActiveOrFutureBookingEnd = `
 		SELECT MAX(b.end_time)
