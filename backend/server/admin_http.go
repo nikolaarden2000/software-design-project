@@ -255,6 +255,11 @@ func (s *Server) AdminBookingsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	roomID, ok := optionalIntQuery(w, r, "room_id", "invalid_room_id", "Некорректный room_id")
+	if !ok {
+		return
+	}
+
 	status := optionalStringQuery(r, "status")
 
 	items, err := s.bookingRepo.ListAdminBookings(
@@ -262,6 +267,7 @@ func (s *Server) AdminBookingsHandler(w http.ResponseWriter, r *http.Request) {
 		currentUser.ID,
 		currentUser.Role == users.RoleSuperuser,
 		locationID,
+		roomID,
 		status,
 		time.Now(),
 	)

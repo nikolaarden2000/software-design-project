@@ -106,8 +106,9 @@ const (
 				  AND al.admin_id = $2
 			)
 		)
-		  AND ($3::int IS NULL OR l.id = $3)
-		  AND ($4::text IS NULL OR b.status::text = $4)
+			AND ($3::int IS NULL OR l.id = $3)
+			AND ($4::int IS NULL OR r.id = $4)
+			AND ($5::text IS NULL OR b.status::text = $5)
 		ORDER BY b.id DESC`
 
 	queryGetAdminBookingForCancel = `
@@ -435,6 +436,7 @@ func (r *Repository) ListAdminBookings(
 	adminID int,
 	includeAll bool,
 	locationID *int,
+	roomID *int,
 	status *string,
 	now time.Time,
 ) ([]AdminBookingItem, error) {
@@ -452,6 +454,14 @@ func (r *Repository) ListAdminBookings(
 		locationParam = *locationID
 	}
 
+	var roomParam any
+	if roomID != nil {
+		if *roomID <= 0 {
+			return nil, db.ErrInvalidID
+		}
+		roomParam = *roomID
+	}
+
 	var statusParam any
 	if status != nil {
 		switch *status {
@@ -462,7 +472,7 @@ func (r *Repository) ListAdminBookings(
 		}
 	}
 
-	rows, err := r.q.Query(ctx, queryListAdminBookings, includeAll, adminID, locationParam, statusParam)
+	rows, err := r.q.Query(ctx, queryListAdminBookings, includeAll, adminID, locationParam, roomParam, statusParam)
 	if err != nil {
 		return nil, err
 	}

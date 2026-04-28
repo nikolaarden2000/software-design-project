@@ -63,7 +63,7 @@ type BookingRepo interface {
 	GetUserBookings(ctx context.Context, userID int, now time.Time) ([]bookings.BookingHistoryItem, error)
 	CancelBooking(ctx context.Context, bookingID, userID int, now time.Time) error
 
-	ListAdminBookings(ctx context.Context, adminID int, includeAll bool, locationID *int, status *string, now time.Time) ([]bookings.AdminBookingItem, error)
+	ListAdminBookings(ctx context.Context, adminID int, includeAll bool, locationID *int, roomID *int, status *string, now time.Time) ([]bookings.AdminBookingItem, error)
 	CancelAdminBooking(ctx context.Context, adminID int, includeAll bool, bookingID int, now time.Time) error
 }
 
