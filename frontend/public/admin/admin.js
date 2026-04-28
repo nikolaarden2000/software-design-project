@@ -1,16 +1,16 @@
 (function () {
   'use strict';
 
+  const ROOM_STATUSES = ['draft', 'pending', 'published', 'rejected', 'archived'];
+  const BOOKING_STATUSES = ['booked', 'in_use', 'finished', 'canceled'];
+
   let locations = [];
-  let rooms = [];
-  let bookings = [];
+  let currentRoom = null;
 
   document.addEventListener('DOMContentLoaded', initAdminPage);
 
   async function initAdminPage() {
     bindLogout();
-    bindForms();
-    bindFilters();
 
     try {
       const me = await window.Api.getMe();
@@ -26,10 +26,10 @@
       }
 
       showContent();
-      await loadAllData();
+      await routeAdminPage();
     } catch (err) {
       console.error(err);
-      alert(err?.message || 'Ошибка загрузки панели администратора');
+      alert(err?.message || 'Ошибка загрузки admin-панели');
     }
   }
 
@@ -43,262 +43,271 @@
     document.getElementById('adminContent')?.classList.remove('hidden');
   }
 
-  async function loadAllData() {
-    await loadLocations();
+  async function routeAdminPage() {
+    const path = window.location.pathname;
 
-    fillLocationSelects();
+    if (path === '/admin') {
+      await renderAdminHome();
+      return;
+    }
 
-    await Promise.all([
-      loadRooms(),
-      loadBookings()
-    ]);
+    const locationMatch = path.match(/^\/admin\/location\/(\d+)$/);
+    if (locationMatch) {
+      await renderLocationPage(Number(locationMatch[1]));
+      return;
+    }
+
+    if (path === '/admin/room/new') {
+      const params = new URLSearchParams(window.location.search);
+      const locationId = Number(params.get('location_id'));
+
+      if (!locationId) {
+        renderError('Не указан location_id');
+        return;
+      }
+
+      await renderNewRoomPage(locationId);
+      return;
+    }
+
+    const roomMatch = path.match(/^\/admin\/room\/(\d+)$/);
+    if (roomMatch) {
+      await renderRoomPage(Number(roomMatch[1]));
+      return;
+    }
+
+    renderError('Страница не найдена');
   }
 
   async function loadLocations() {
     const data = await window.Api.getAdminLocations();
     locations = data.items || [];
-    renderLocations();
+    return locations;
   }
 
-  async function loadRooms() {
-    const params = {};
+  async function renderAdminHome() {
+    const root = getRoot();
 
-    const locationId = document.getElementById('roomsLocationFilter')?.value;
-    const status = document.getElementById('roomsStatusFilter')?.value;
+    root.innerHTML = `
+      <div class="dashboard-header">
+        <div>
+          <h1>Мои локации</h1>
+          <p>Выберите локацию, чтобы управлять помещениями.</p>
+        </div>
+      </div>
 
-    if (locationId) {
-      params.location_id = locationId;
+      <section class="panel panel-wide">
+        <h2>Доступные локации</h2>
+        <div id="locationsTable"></div>
+      </section>
+    `;
+
+    await loadLocations();
+
+    const tableRoot = document.getElementById('locationsTable');
+
+    if (locations.length === 0) {
+      tableRoot.innerHTML = '<div class="item">У вас пока нет назначенных локаций</div>';
+      return;
     }
+
+    tableRoot.innerHTML = `
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Компания</th>
+            <th>Город</th>
+            <th>Адрес</th>
+            <th>Помещений</th>
+            <th>Часовой пояс</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${locations.map(location => `
+            <tr class="clickable-row" data-location-id="${location.id}">
+              <td>${location.id}</td>
+              <td>${escapeHtml(location.company_name)}</td>
+              <td>${escapeHtml(location.city)}</td>
+              <td>${escapeHtml(location.address)}</td>
+              <td>${location.rooms_count ?? 0}</td>
+              <td>${escapeHtml(location.timezone || '')}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+
+    tableRoot.querySelectorAll('[data-location-id]').forEach(row => {
+      row.addEventListener('click', () => {
+        window.location.href = `/admin/location/${row.dataset.locationId}`;
+      });
+    });
+  }
+
+  async function renderLocationPage(locationId) {
+    const root = getRoot();
+
+    await loadLocations();
+
+    const location = locations.find(item => Number(item.id) === Number(locationId));
+
+    root.innerHTML = `
+      <div class="dashboard-header">
+        <div>
+          <h1>${location ? escapeHtml(location.company_name) : 'Локация'}</h1>
+          <p>${location ? `${escapeHtml(location.city)}, ${escapeHtml(location.address)}` : `ID локации: ${locationId}`}</p>
+        </div>
+
+        <div class="header-actions">
+          <a class="btn" href="/admin">Назад к локациям</a>
+          <a class="btn primary" href="/admin/room/new?location_id=${encodeURIComponent(locationId)}">
+            Создать помещение
+          </a>
+        </div>
+      </div>
+
+      <section class="panel panel-wide">
+        <div class="panel-header">
+          <h2>Помещения локации</h2>
+
+          <div class="filters-row">
+            <select id="statusFilter">
+              <option value="">Все статусы</option>
+              ${ROOM_STATUSES.map(status => `
+                <option value="${status}">${getRoomStatusLabel(status)}</option>
+              `).join('')}
+            </select>
+
+            <button id="reloadRoomsBtn" class="btn">Обновить</button>
+          </div>
+        </div>
+
+        <div id="roomsTable"></div>
+      </section>
+    `;
+
+    document.getElementById('statusFilter')?.addEventListener('change', () => {
+      loadRoomsForLocation(locationId);
+    });
+
+    document.getElementById('reloadRoomsBtn')?.addEventListener('click', () => {
+      loadRoomsForLocation(locationId);
+    });
+
+    await loadRoomsForLocation(locationId);
+  }
+
+  async function loadRoomsForLocation(locationId) {
+    const status = document.getElementById('statusFilter')?.value;
+
+    const params = {
+      location_id: locationId
+    };
 
     if (status) {
       params.status = status;
     }
 
     const data = await window.Api.getAdminRooms(params);
-    rooms = data.items || [];
-    renderRooms();
+    const rooms = data.items || [];
+
+    renderRoomsTable(rooms);
   }
 
-  async function loadBookings() {
-    const params = {};
-
-    const locationId = document.getElementById('bookingsLocationFilter')?.value;
-    const status = document.getElementById('bookingsStatusFilter')?.value;
-
-    if (locationId) {
-      params.location_id = locationId;
-    }
-
-    if (status) {
-      params.status = status;
-    }
-
-    const data = await window.Api.getAdminBookings(params);
-    bookings = data.items || [];
-    renderBookings();
-  }
-
-  function renderLocations() {
-    const root = document.getElementById('locationsList');
-    if (!root) return;
-
-    if (locations.length === 0) {
-      root.innerHTML = '<div class="item">У вас пока нет назначенных локаций</div>';
-      return;
-    }
-
-    root.innerHTML = locations.map(location => `
-      <div class="item">
-        <div class="item-title">${escapeHtml(location.company_name)}</div>
-        <div class="item-meta">${escapeHtml(location.city)}, ${escapeHtml(location.address)}</div>
-        <div class="item-meta">Комнат: ${location.rooms_count ?? 0}</div>
-        <div class="item-meta">Таймзона: ${escapeHtml(location.timezone || '')}</div>
-      </div>
-    `).join('');
-  }
-
-  function renderRooms() {
-    const root = document.getElementById('roomsList');
-    if (!root) return;
+  function renderRoomsTable(rooms) {
+    const tableRoot = document.getElementById('roomsTable');
+    if (!tableRoot) return;
 
     if (rooms.length === 0) {
-      root.innerHTML = '<div class="item">Помещений пока нет</div>';
+      tableRoot.innerHTML = '<div class="item">Помещений пока нет</div>';
       return;
     }
 
-    root.innerHTML = rooms.map(room => {
-      const statusLabel = getRoomStatusLabel(room.status);
-      const canSubmit = room.status === 'draft' || room.status === 'rejected';
+    tableRoot.innerHTML = `
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Название</th>
+            <th>Вместимость</th>
+            <th>Цена</th>
+            <th>Статус</th>
+            <th>Причина отклонения</th>
+            <th>Дата создания</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rooms.map(room => `
+            <tr class="clickable-row" data-room-id="${room.id}">
+              <td>${room.id}</td>
+              <td>${escapeHtml(room.title)}</td>
+              <td>${room.capacity}</td>
+              <td>${room.price} ₽/ч</td>
+              <td>
+                <span class="badge badge-${escapeHtml(room.status)}">
+                  ${getRoomStatusLabel(room.status)}
+                </span>
+              </td>
+              <td>${escapeHtml(room.rejection_reason || '—')}</td>
+              <td>${formatDateTime(room.created_at)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
 
-      return `
-        <article class="room-card" data-room-id="${room.id}">
-          <h3>${escapeHtml(room.title)}</h3>
-
-          <div class="item-meta">
-            Локация ID: ${room.location_id}
-          </div>
-
-          <div class="card-meta">
-            <span class="badge">${room.price} ₽/ч</span>
-            <span class="badge">до ${room.capacity} чел.</span>
-            <span class="badge badge-${escapeHtml(room.status)}">${statusLabel}</span>
-          </div>
-
-          ${room.rejection_reason ? `
-            <div class="item-meta">
-              Причина отклонения: ${escapeHtml(room.rejection_reason)}
-            </div>
-          ` : ''}
-
-          <div class="card-actions">
-            <button 
-              class="btn success"
-              data-action="submit-room"
-              data-room-id="${room.id}"
-              ${canSubmit ? '' : 'disabled'}
-            >
-              Отправить на модерацию
-            </button>
-          </div>
-        </article>
-      `;
-    }).join('');
-
-    root.querySelectorAll('[data-action="submit-room"]').forEach(button => {
-      button.addEventListener('click', () => submitRoom(button.dataset.roomId));
-    });
-  }
-
-  function renderBookings() {
-    const root = document.getElementById('bookingsList');
-    if (!root) return;
-
-    if (bookings.length === 0) {
-      root.innerHTML = '<div class="item">Бронирований пока нет</div>';
-      return;
-    }
-
-    root.innerHTML = bookings.map(booking => {
-      const canCancel = booking.status === 'booked';
-
-      return `
-        <article class="booking-card" data-booking-id="${booking.id}">
-          <h3>${escapeHtml(booking.room_title)}</h3>
-
-          <div class="item-meta">
-            ${escapeHtml(booking.location_address || '')}
-          </div>
-
-          <div class="card-meta">
-            <span class="badge">${escapeHtml(booking.date)}</span>
-            <span class="badge">${escapeHtml(booking.start_time)} — ${escapeHtml(booking.end_time)}</span>
-            <span class="badge">${booking.total_price} ₽</span>
-            <span class="badge">${getBookingStatusLabel(booking.status)}</span>
-          </div>
-
-          <div class="item-meta">
-            Пользователь: ${escapeHtml(booking.user_username || '')}
-            (${escapeHtml(booking.user_email || '')})
-          </div>
-
-          <div class="card-actions">
-            <button
-              class="btn danger"
-              data-action="cancel-booking"
-              data-booking-id="${booking.id}"
-              ${canCancel ? '' : 'disabled'}
-            >
-              Отменить бронь
-            </button>
-          </div>
-        </article>
-      `;
-    }).join('');
-
-    root.querySelectorAll('[data-action="cancel-booking"]').forEach(button => {
-      button.addEventListener('click', () => cancelBooking(button.dataset.bookingId));
-    });
-  }
-
-  function fillLocationSelects() {
-    const selects = [
-      document.getElementById('roomLocation'),
-      document.getElementById('roomsLocationFilter'),
-      document.getElementById('bookingsLocationFilter')
-    ];
-
-    selects.forEach(select => {
-      if (!select) return;
-
-      const firstOption = select.querySelector('option')?.cloneNode(true);
-      select.innerHTML = '';
-
-      if (firstOption) {
-        select.appendChild(firstOption);
-      }
-
-      locations.forEach(location => {
-        const option = document.createElement('option');
-        option.value = location.id;
-        option.textContent = `${location.company_name} — ${location.city}, ${location.address}`;
-        select.appendChild(option);
+    tableRoot.querySelectorAll('[data-room-id]').forEach(row => {
+      row.addEventListener('click', () => {
+        window.location.href = `/admin/room/${row.dataset.roomId}`;
       });
     });
   }
 
-  function bindForms() {
-    const roomForm = document.getElementById('roomForm');
+  async function renderNewRoomPage(locationId) {
+    const root = getRoot();
 
-    if (!roomForm) return;
+    root.innerHTML = `
+      <div class="dashboard-header">
+        <div>
+          <h1>Создание помещения</h1>
+          <p>Локация ID: ${locationId}</p>
+        </div>
 
-    roomForm.addEventListener('submit', async (event) => {
-      event.preventDefault();
+        <div class="header-actions">
+          <a class="btn" href="/admin/location/${encodeURIComponent(locationId)}">Назад</a>
+        </div>
+      </div>
 
-      const imageValue = document.getElementById('roomImages').value.trim();
+      <section class="panel panel-wide">
+        <h2>Новое помещение</h2>
+        ${renderRoomForm({
+          location_id: locationId,
+          title: '',
+          description: '',
+          price: '',
+          capacity: '',
+          available_from: '09:00',
+          available_to: '21:00',
+          images: []
+        }, false)}
 
-      const payload = {
-        location_id: Number(document.getElementById('roomLocation').value),
-        title: document.getElementById('roomTitle').value.trim(),
-        description: document.getElementById('roomDescription').value.trim(),
-        price: Number(document.getElementById('roomPrice').value),
-        capacity: Number(document.getElementById('roomCapacity').value),
-        available_from: document.getElementById('roomAvailableFrom').value,
-        available_to: document.getElementById('roomAvailableTo').value,
-        images: imageValue
-          ? imageValue.split(',').map(item => item.trim()).filter(Boolean)
-          : ['/shared/placeholders/room-placeholder.svg']
-      };
+        <div class="card-actions">
+          <button id="saveDraftBtn" class="btn primary">Сохранить как черновик</button>
+        </div>
+      </section>
+    `;
 
-      if (!payload.location_id) {
-        alert('Выберите локацию');
-        return;
-      }
+    document.getElementById('saveDraftBtn')?.addEventListener('click', async () => {
+      const payload = readRoomForm();
 
-      if (!payload.title || !payload.description) {
-        alert('Введите название и описание помещения');
-        return;
-      }
-
-      if (payload.price <= 0 || payload.capacity <= 0) {
-        alert('Цена и вместимость должны быть больше нуля');
+      if (!validateRoomPayload(payload)) {
         return;
       }
 
       try {
-        await window.Api.createAdminRoom(payload);
-
-        roomForm.reset();
-        document.getElementById('roomAvailableFrom').value = '09:00';
-        document.getElementById('roomAvailableTo').value = '21:00';
-
-        await Promise.all([
-          loadRooms(),
-          loadLocations()
-        ]);
-
-        fillLocationSelects();
-
-        alert('Помещение создано как черновик');
+        const created = await window.Api.createAdminRoom(payload);
+        window.location.href = `/admin/room/${created.id}`;
       } catch (err) {
         console.error(err);
         alert(err?.message || 'Ошибка создания помещения');
@@ -306,66 +315,372 @@
     });
   }
 
-  function bindFilters() {
-    const reloadRoomsBtn = document.getElementById('reloadRoomsBtn');
-    const reloadBookingsBtn = document.getElementById('reloadBookingsBtn');
+  async function renderRoomPage(roomId) {
+    const root = getRoot();
 
-    const roomsLocationFilter = document.getElementById('roomsLocationFilter');
-    const roomsStatusFilter = document.getElementById('roomsStatusFilter');
+    const data = await window.Api.getAdminRoom(roomId);
+    currentRoom = data;
 
-    const bookingsLocationFilter = document.getElementById('bookingsLocationFilter');
-    const bookingsStatusFilter = document.getElementById('bookingsStatusFilter');
+    const canEdit = currentRoom.status === 'draft' || currentRoom.status === 'rejected';
+    const showBookings = ['published', 'pending', 'archived'].includes(currentRoom.status);
 
-    if (reloadRoomsBtn) {
-      reloadRoomsBtn.addEventListener('click', loadRooms);
+    root.innerHTML = `
+      <div class="dashboard-header">
+        <div>
+          <h1>${escapeHtml(currentRoom.title)}</h1>
+          <p>
+            Статус:
+            <span class="badge badge-${escapeHtml(currentRoom.status)}">
+              ${getRoomStatusLabel(currentRoom.status)}
+            </span>
+          </p>
+        </div>
+
+        <div class="header-actions">
+          <a class="btn" href="/admin/location/${encodeURIComponent(currentRoom.location_id)}">Назад к локации</a>
+        </div>
+      </div>
+
+      <section class="panel panel-wide">
+        <h2>Информация о помещении</h2>
+
+        ${currentRoom.status === 'rejected' && currentRoom.rejection_reason ? `
+          <div class="warning-box">
+            Причина отклонения: ${escapeHtml(currentRoom.rejection_reason)}
+          </div>
+        ` : ''}
+
+        ${renderRoomForm(currentRoom, !canEdit)}
+
+        <div class="card-actions">
+          ${canEdit ? `
+            <button id="saveRoomBtn" class="btn primary">Сохранить изменения</button>
+            <button id="submitRoomBtn" class="btn success">Отправить на модерацию</button>
+          ` : ''}
+        </div>
+      </section>
+
+      ${renderArchiveBlock(currentRoom)}
+
+      ${showBookings ? `
+        <section class="panel panel-wide">
+          <div class="panel-header">
+            <h2>Бронирования помещения</h2>
+
+            <div class="filters-row">
+              <select id="bookingStatusFilter">
+                <option value="">Все статусы</option>
+                ${BOOKING_STATUSES.map(status => `
+                  <option value="${status}">${getBookingStatusLabel(status)}</option>
+                `).join('')}
+              </select>
+
+              <button id="reloadBookingsBtn" class="btn">Обновить</button>
+            </div>
+          </div>
+
+          <div id="bookingsTable"></div>
+        </section>
+      ` : ''}
+    `;
+
+    if (canEdit) {
+      document.getElementById('saveRoomBtn')?.addEventListener('click', saveRoomChanges);
+      document.getElementById('submitRoomBtn')?.addEventListener('click', submitCurrentRoom);
     }
 
-    if (reloadBookingsBtn) {
-      reloadBookingsBtn.addEventListener('click', loadBookings);
-    }
+    bindArchiveButtons();
 
-    if (roomsLocationFilter) {
-      roomsLocationFilter.addEventListener('change', loadRooms);
-    }
+    if (showBookings) {
+      document.getElementById('bookingStatusFilter')?.addEventListener('change', () => {
+        loadBookingsForRoom(roomId);
+      });
 
-    if (roomsStatusFilter) {
-      roomsStatusFilter.addEventListener('change', loadRooms);
-    }
+      document.getElementById('reloadBookingsBtn')?.addEventListener('click', () => {
+        loadBookingsForRoom(roomId);
+      });
 
-    if (bookingsLocationFilter) {
-      bookingsLocationFilter.addEventListener('change', loadBookings);
-    }
-
-    if (bookingsStatusFilter) {
-      bookingsStatusFilter.addEventListener('change', loadBookings);
+      await loadBookingsForRoom(roomId);
     }
   }
 
-  async function submitRoom(roomId) {
-    try {
-      await window.Api.submitRoomForModeration(roomId);
-      await loadRooms();
-      alert('Помещение отправлено на модерацию');
-    } catch (err) {
-      console.error(err);
-      alert(err?.message || 'Ошибка отправки помещения на модерацию');
-    }
+  function renderRoomForm(room, readonly) {
+    const imagesValue = Array.isArray(room.images) ? room.images.join(', ') : '';
+
+    return `
+      <form id="roomForm" class="form">
+        <input id="roomLocationId" type="hidden" value="${room.location_id || ''}" />
+
+        <label>
+          Название
+          <input id="roomTitle" type="text" value="${escapeAttr(room.title)}" ${readonly ? 'readonly' : ''} required />
+        </label>
+
+        <label>
+          Описание
+          <textarea id="roomDescription" ${readonly ? 'readonly' : ''} required>${escapeHtml(room.description || '')}</textarea>
+        </label>
+
+        <div class="form-row">
+          <label>
+            Цена
+            <input id="roomPrice" type="number" min="1" step="1" value="${room.price || ''}" ${readonly ? 'readonly' : ''} required />
+          </label>
+
+          <label>
+            Вместимость
+            <input id="roomCapacity" type="number" min="1" step="1" value="${room.capacity || ''}" ${readonly ? 'readonly' : ''} required />
+          </label>
+        </div>
+
+        <div class="form-row">
+          <label>
+            Доступно с
+            <input id="roomAvailableFrom" type="time" value="${room.available_from || '09:00'}" ${readonly ? 'disabled' : ''} required />
+          </label>
+
+          <label>
+            Доступно до
+            <input id="roomAvailableTo" type="time" value="${room.available_to || '21:00'}" ${readonly ? 'disabled' : ''} required />
+          </label>
+        </div>
+
+        <label>
+          Изображения
+          <textarea id="roomImages" ${readonly ? 'readonly' : ''} placeholder="URL изображений через запятую">${escapeHtml(imagesValue)}</textarea>
+        </label>
+      </form>
+    `;
   }
 
-  async function cancelBooking(bookingId) {
-    const reason = prompt('Укажите причину отмены бронирования');
+  function readRoomForm() {
+    const imageValue = document.getElementById('roomImages').value.trim();
 
-    if (reason === null) {
+    return {
+      location_id: Number(document.getElementById('roomLocationId').value),
+      title: document.getElementById('roomTitle').value.trim(),
+      description: document.getElementById('roomDescription').value.trim(),
+      price: Number(document.getElementById('roomPrice').value),
+      capacity: Number(document.getElementById('roomCapacity').value),
+      available_from: document.getElementById('roomAvailableFrom').value,
+      available_to: document.getElementById('roomAvailableTo').value,
+      images: imageValue
+        ? imageValue.split(',').map(item => item.trim()).filter(Boolean)
+        : ['/shared/placeholders/room-placeholder.svg']
+    };
+  }
+
+  function validateRoomPayload(payload) {
+    if (!payload.location_id) {
+      alert('Не указан location_id');
+      return false;
+    }
+
+    if (!payload.title || !payload.description) {
+      alert('Введите название и описание');
+      return false;
+    }
+
+    if (payload.price <= 0 || payload.capacity <= 0) {
+      alert('Цена и вместимость должны быть больше нуля');
+      return false;
+    }
+
+    return true;
+  }
+
+  async function saveRoomChanges() {
+    const payload = readRoomForm();
+
+    if (!validateRoomPayload(payload)) {
       return;
     }
 
     try {
-      await window.Api.cancelAdminBooking(bookingId, reason.trim() || 'Отменено администратором');
-      await loadBookings();
+      await window.Api.updateAdminRoom(currentRoom.id, payload);
+      alert('Изменения сохранены');
+      await renderRoomPage(currentRoom.id);
+    } catch (err) {
+      console.error(err);
+      alert(err?.message || 'Ошибка сохранения помещения');
+    }
+  }
+
+  async function submitCurrentRoom() {
+    try {
+      await window.Api.submitRoomForModeration(currentRoom.id);
+      alert('Помещение отправлено на модерацию');
+      await renderRoomPage(currentRoom.id);
+    } catch (err) {
+      console.error(err);
+      alert(err?.message || 'Ошибка отправки на модерацию');
+    }
+  }
+
+  async function loadBookingsForRoom(roomId) {
+    const status = document.getElementById('bookingStatusFilter')?.value;
+
+    const params = {
+      room_id: roomId
+    };
+
+    if (status) {
+      params.status = status;
+    }
+
+    const data = await window.Api.getAdminBookings(params);
+    const bookings = data.items || [];
+
+    renderBookingsTable(bookings);
+  }
+
+  function renderBookingsTable(bookings) {
+    const root = document.getElementById('bookingsTable');
+    if (!root) return;
+
+    if (bookings.length === 0) {
+      root.innerHTML = '<div class="item">Бронирований пока нет</div>';
+      return;
+    }
+
+    const sorted = [...bookings].sort((a, b) => {
+      return `${a.date} ${a.start_time}`.localeCompare(`${b.date} ${b.start_time}`);
+    });
+
+    root.innerHTML = `
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>ID брони</th>
+            <th>Пользователь</th>
+            <th>Email</th>
+            <th>Дата</th>
+            <th>Начало</th>
+            <th>Окончание</th>
+            <th>Стоимость</th>
+            <th>Статус</th>
+            <th>Действия</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${sorted.map(booking => `
+            <tr>
+              <td>${booking.id}</td>
+              <td>${escapeHtml(booking.user_username || '')}</td>
+              <td>${escapeHtml(booking.user_email || '')}</td>
+              <td>${escapeHtml(booking.date)}</td>
+              <td>${escapeHtml(booking.start_time)}</td>
+              <td>${escapeHtml(booking.end_time)}</td>
+              <td>${booking.total_price} ₽</td>
+              <td>${getBookingStatusLabel(booking.status)}</td>
+              <td>
+                ${booking.status === 'booked' ? `
+                  <button class="btn danger small-btn" data-cancel-booking="${booking.id}">
+                    Отменить
+                  </button>
+                ` : '—'}
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+
+    root.querySelectorAll('[data-cancel-booking]').forEach(button => {
+      button.addEventListener('click', () => cancelBooking(button.dataset.cancelBooking));
+    });
+  }
+
+  async function cancelBooking(bookingId) {
+    if (!confirm('Отменить бронирование?')) {
+      return;
+    }
+
+    try {
+      await window.Api.cancelAdminBooking(bookingId);
+      await loadBookingsForRoom(currentRoom.id);
       alert('Бронирование отменено');
     } catch (err) {
       console.error(err);
       alert(err?.message || 'Ошибка отмены бронирования');
+    }
+  }
+
+  function renderArchiveBlock(room) {
+    if (room.status === 'archived') {
+      return `
+        <section class="panel panel-wide">
+          <h2>Архивирование</h2>
+          <div class="info-box">Помещение уже архивировано.</div>
+        </section>
+      `;
+    }
+
+    const archive = room.archive || {};
+    const bookingDisabled = archive.booking_disabled || room.booking_disabled;
+    const scheduledFor = archive.scheduled_for || room.archive_scheduled_for;
+
+    if (bookingDisabled || scheduledFor) {
+      return `
+        <section class="panel panel-wide">
+          <h2>Архивирование</h2>
+          <div class="warning-box">
+            Помещение ожидает архивирования. Новые бронирования отключены.
+            ${scheduledFor ? `<br>Запланировано на: ${formatDateTime(scheduledFor)}` : ''}
+          </div>
+        </section>
+      `;
+    }
+
+    return `
+      <section class="panel panel-wide">
+        <h2>Архивирование</h2>
+
+        ${archive.has_active_or_future_bookings ? `
+          <div class="warning-box">
+            У помещения есть активные или будущие бронирования.
+            Немедленное архивирование может быть недоступно.
+          </div>
+        ` : ''}
+
+        <div class="card-actions">
+          <button id="archiveImmediateBtn" class="btn danger" ${archive.can_archive_now === false ? 'disabled' : ''}>
+            Архивировать сейчас
+          </button>
+
+          <button id="archiveScheduledBtn" class="btn">
+            Запланировать архивирование
+          </button>
+        </div>
+      </section>
+    `;
+  }
+
+  function bindArchiveButtons() {
+    document.getElementById('archiveImmediateBtn')?.addEventListener('click', async () => {
+      if (!confirm('Архивировать помещение сейчас?')) {
+        return;
+      }
+
+      await archiveRoom('immediate');
+    });
+
+    document.getElementById('archiveScheduledBtn')?.addEventListener('click', async () => {
+      if (!confirm('Отключить новые бронирования и запланировать архивирование после последней брони?')) {
+        return;
+      }
+
+      await archiveRoom('scheduled');
+    });
+  }
+
+  async function archiveRoom(mode) {
+    try {
+      await window.Api.archiveAdminRoom(currentRoom.id, mode);
+      await renderRoomPage(currentRoom.id);
+    } catch (err) {
+      console.error(err);
+      alert(err?.message || 'Ошибка архивирования помещения');
     }
   }
 
@@ -383,6 +698,20 @@
         alert(err?.message || 'Ошибка выхода');
       }
     });
+  }
+
+  function renderError(message) {
+    getRoot().innerHTML = `
+      <section class="access-denied">
+        <h2>Ошибка</h2>
+        <p>${escapeHtml(message)}</p>
+        <a class="btn" href="/admin">В админ-панель</a>
+      </section>
+    `;
+  }
+
+  function getRoot() {
+    return document.getElementById('adminRoot');
   }
 
   function getRoomStatusLabel(status) {
@@ -408,6 +737,16 @@
     return map[status] || status;
   }
 
+  function formatDateTime(value) {
+    if (!value) return '—';
+
+    try {
+      return new Date(value).toLocaleString('ru-RU');
+    } catch {
+      return value;
+    }
+  }
+
   function escapeHtml(value) {
     return String(value ?? '')
       .replaceAll('&', '&amp;')
@@ -415,5 +754,9 @@
       .replaceAll('>', '&gt;')
       .replaceAll('"', '&quot;')
       .replaceAll("'", '&#039;');
+  }
+
+  function escapeAttr(value) {
+    return escapeHtml(value).replaceAll('`', '&#096;');
   }
 })();

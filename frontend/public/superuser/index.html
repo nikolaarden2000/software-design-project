@@ -72,31 +72,63 @@
           <div id="locationsList" class="list"></div>
         </section>
 
-        <section class="panel">
-          <h2>Администраторы</h2>
+    <section class="panel">
+    <h2>Администраторы</h2>
 
-          <form id="adminForm" class="form">
-            <input id="adminUsername" type="text" placeholder="Имя администратора" required />
-            <input id="adminEmail" type="email" placeholder="Email" required />
-            <input id="adminPassword" type="password" placeholder="Пароль" required />
+    <form id="adminForm" class="form">
+      <input id="adminUsername" type="text" placeholder="Имя администратора" required />
+      <input id="adminEmail" type="email" placeholder="Email" required />
+      <input id="adminPassword" type="password" placeholder="Пароль" required />
 
-            <select id="adminLocation" required>
-              <option value="">Выберите локацию</option>
-            </select>
+      <button type="submit" class="btn primary">Создать администратора</button>
+    </form>
 
-            <button type="submit" class="btn primary">Создать администратора</button>
-          </form>
+    <div id="adminsList" class="list"></div>
+  </section>
 
-          <div id="adminsList" class="list"></div>
-        </section>
+  <section class="panel">
+    <h2>Привязка локаций</h2>
 
-        <section class="panel panel-wide">
-          <h2>Модерация помещений</h2>
-          <div id="moderationList" class="moderation-list"></div>
-        </section>
-      </div>
-    </section>
-  </main>
+    <form id="assignLocationsForm" class="form">
+      <select id="assignAdmin" required>
+        <option value="">Выберите администратора</option>
+      </select>
+
+      <div id="assignmentLocationRows" class="location-picker-rows"></div>
+
+      <button type="submit" class="btn primary">
+        Привязать выбранные локации
+      </button>
+    </form>
+  </section>
+          <section class="panel panel-wide">
+            <h2>Модерация помещений</h2>
+            <div id="moderationList" class="moderation-list"></div>
+          </section>
+        </div>
+      </section>
+    </main>
+    <div id="locationPickerModal" class="location-modal hidden" aria-hidden="true">
+  <div class="location-modal__backdrop" data-close-location-modal></div>
+
+  <div class="location-modal__content">
+    <div class="location-modal__header">
+      <h3>Выберите локацию</h3>
+      <button type="button" class="location-modal__close" data-close-location-modal>
+        ×
+      </button>
+    </div>
+
+    <input
+      id="locationPickerSearch"
+      type="search"
+      class="location-search"
+      placeholder="Поиск по компании, городу или адресу..."
+    />
+
+    <div id="locationPickerList" class="location-picker-list"></div>
+  </div>
+</div>
 
   <script src="/shared/api.js" defer></script>
   <script src="/superuser/superuser.js" defer></script>
