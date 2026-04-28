@@ -199,6 +199,41 @@ const (
 			updated_at = now()
 		WHERE id = $1
 		  AND status <> 'archived'`
+
+	queryGetLastActiveOrFutureBookingEnd = `
+		SELECT MAX(b.end_time)
+		FROM bookings b
+		WHERE b.room_id = $1
+		  AND b.status = 'booked'
+		  AND b.end_time > $2`
+
+	queryArchiveAdminRoomImmediate = `
+		UPDATE rooms
+		SET
+			status = 'archived',
+			booking_disabled = true,
+			archive_scheduled_for = NULL,
+			updated_at = now()
+		WHERE id = $1
+		  AND status <> 'archived'`
+
+	queryScheduleAdminRoomArchive = `
+		UPDATE rooms
+		SET
+			booking_disabled = true,
+			archive_scheduled_for = $2,
+			updated_at = now()
+		WHERE id = $1
+		  AND status = 'published'`
+
+	queryApplyDueArchivedRooms = `
+		UPDATE rooms
+		SET
+			status = 'archived',
+			updated_at = now()
+		WHERE archive_scheduled_for IS NOT NULL
+		  AND archive_scheduled_for <= $1
+		  AND status <> 'archived'`
 )
 
 type Repository struct {
@@ -215,6 +250,10 @@ func (r *Repository) GetRoomsBatchByCity(ctx context.Context, lastID, limit int,
 	}
 	if limit <= 0 {
 		return nil, db.ErrInvalidArgument
+	}
+
+	if err := r.ApplyDueArchivedRooms(ctx, time.Now()); err != nil {
+		return nil, err
 	}
 
 	rows, err := r.q.Query(ctx, queryGetRoomsBatchByCity, lastID, city, limit)
@@ -276,6 +315,10 @@ func (r *Repository) GetRoomPageData(ctx context.Context, roomID int) (*RoomPage
 		return nil, db.ErrInvalidID
 	}
 
+	if err := r.ApplyDueArchivedRooms(ctx, time.Now()); err != nil {
+		return nil, err
+	}
+
 	var d RoomPageData
 	var availFrom, availTo time.Time
 
@@ -311,6 +354,10 @@ func (r *Repository) GetRoomPageData(ctx context.Context, roomID int) (*RoomPage
 func (r *Repository) ListAdminRooms(ctx context.Context, adminID int, includeAll bool, locationID *int, status *string) ([]AdminRoomListItem, error) {
 	if adminID <= 0 && !includeAll {
 		return nil, db.ErrInvalidID
+	}
+
+	if err := r.ApplyDueArchivedRooms(ctx, time.Now()); err != nil {
+		return nil, err
 	}
 
 	if status != nil && !IsValidStatus(*status) {
@@ -360,6 +407,10 @@ func (r *Repository) ListAdminRooms(ctx context.Context, adminID int, includeAll
 func (r *Repository) GetAdminRoom(ctx context.Context, adminID int, includeAll bool, roomID int) (*AdminRoomDetails, error) {
 	if roomID <= 0 {
 		return nil, db.ErrInvalidID
+	}
+
+	if err := r.ApplyDueArchivedRooms(ctx, time.Now()); err != nil {
+		return nil, err
 	}
 
 	if err := r.checkRoomAccess(ctx, roomID, adminID, includeAll); err != nil {
@@ -502,6 +553,117 @@ func (r *Repository) SubmitAdminRoom(ctx context.Context, adminID int, includeAl
 	}
 
 	return nil
+}
+
+func (r *Repository) ArchiveAdminRoom(
+	ctx context.Context,
+	adminID int,
+	includeAll bool,
+	roomID int,
+	mode string,
+	now time.Time,
+) (*AdminRoomArchiveResult, error) {
+	if roomID <= 0 {
+		return nil, db.ErrInvalidID
+	}
+
+	now = now.UTC()
+
+	if mode == "" {
+		mode = ArchiveModeImmediate
+	}
+
+	if mode != ArchiveModeImmediate && mode != ArchiveModeScheduled {
+		return nil, db.ErrInvalidArgument
+	}
+
+	if err := r.checkRoomAccess(ctx, roomID, adminID, includeAll); err != nil {
+		return nil, err
+	}
+
+	lastBookingEnd, err := r.lastActiveOrFutureBookingEnd(ctx, roomID, now)
+	if err != nil {
+		return nil, err
+	}
+
+	hasActiveOrFutureBookings := lastBookingEnd != nil
+
+	if mode == ArchiveModeImmediate {
+		if hasActiveOrFutureBookings {
+			return nil, db.ErrConflict
+		}
+
+		if err := r.archiveRoomImmediately(ctx, roomID); err != nil {
+			return nil, err
+		}
+
+		return &AdminRoomArchiveResult{
+			ID:     roomID,
+			Status: StatusArchived,
+		}, nil
+	}
+
+	if !hasActiveOrFutureBookings {
+		if err := r.archiveRoomImmediately(ctx, roomID); err != nil {
+			return nil, err
+		}
+
+		return &AdminRoomArchiveResult{
+			ID:     roomID,
+			Status: StatusArchived,
+		}, nil
+	}
+
+	tag, err := r.q.Exec(ctx, queryScheduleAdminRoomArchive, roomID, *lastBookingEnd)
+	if err != nil {
+		return nil, err
+	}
+
+	if tag.RowsAffected() == 0 {
+		return nil, db.ErrConflict
+	}
+
+	scheduledFor := lastBookingEnd.UTC().Format(time.RFC3339)
+
+	return &AdminRoomArchiveResult{
+		ID:                  roomID,
+		Status:              StatusPublished,
+		BookingDisabled:     true,
+		ArchiveScheduledFor: &scheduledFor,
+	}, nil
+}
+
+func (r *Repository) lastActiveOrFutureBookingEnd(ctx context.Context, roomID int, now time.Time) (*time.Time, error) {
+	var lastBookingEnd sql.NullTime
+
+	if err := r.q.QueryRow(ctx, queryGetLastActiveOrFutureBookingEnd, roomID, now).Scan(&lastBookingEnd); err != nil {
+		return nil, err
+	}
+
+	if !lastBookingEnd.Valid {
+		return nil, nil
+	}
+
+	result := lastBookingEnd.Time
+	return &result, nil
+}
+
+func (r *Repository) archiveRoomImmediately(ctx context.Context, roomID int) error {
+	tag, err := r.q.Exec(ctx, queryArchiveAdminRoomImmediate, roomID)
+	if err != nil {
+		return err
+	}
+
+	if tag.RowsAffected() == 0 {
+		return r.moderationUpdateMissReason(ctx, roomID)
+	}
+
+	return nil
+}
+
+func (r *Repository) ApplyDueArchivedRooms(ctx context.Context, now time.Time) error {
+	_, err := r.q.Exec(ctx, queryApplyDueArchivedRooms, now.UTC())
+	return err
 }
 
 func (r *Repository) checkLocationAccess(ctx context.Context, locationID, adminID int, includeAll bool) error {

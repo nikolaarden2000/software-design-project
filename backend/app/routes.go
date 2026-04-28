@@ -80,6 +80,11 @@ func RegisterRoutes(mux *http.ServeMux, authService *auth.AuthService, srv *serv
 	)
 
 	mux.Handle(
+		"POST /api/admin/rooms/{room_id}/archive",
+		requireAdmin(http.HandlerFunc(srv.ArchiveAdminRoomHandler)),
+	)
+
+	mux.Handle(
 		"GET /api/admin/bookings",
 		requireAdmin(http.HandlerFunc(srv.AdminBookingsHandler)),
 	)

@@ -75,6 +75,18 @@ type AdminRoomArchive struct {
 	ScheduledFor              *string `json:"scheduled_for"`
 }
 
+const (
+	ArchiveModeImmediate = "immediate"
+	ArchiveModeScheduled = "scheduled"
+)
+
+type AdminRoomArchiveResult struct {
+	ID                  int     `json:"id"`
+	Status              string  `json:"status"`
+	BookingDisabled     bool    `json:"booking_disabled,omitempty"`
+	ArchiveScheduledFor *string `json:"archive_scheduled_for,omitempty"`
+}
+
 type AdminRoomInput struct {
 	LocationID    int      `json:"location_id"`
 	Title         string   `json:"title"`

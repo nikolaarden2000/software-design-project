@@ -230,6 +230,57 @@ func (s *Server) SubmitAdminRoomHandler(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
+type archiveAdminRoomRequest struct {
+	Mode string `json:"mode"`
+}
+
+func (s *Server) ArchiveAdminRoomHandler(w http.ResponseWriter, r *http.Request) {
+	currentUser, ok := currentUserFromRequest(w, r)
+	if !ok {
+		return
+	}
+
+	roomID, ok := parsePathID(w, r, "room_id", "invalid_room_id", "Некорректный id помещения")
+	if !ok {
+		return
+	}
+
+	var req archiveAdminRoomRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httpapi.WriteError(w, http.StatusBadRequest, "invalid_request", "Некорректное тело запроса")
+		return
+	}
+
+	result, err := s.roomRepo.ArchiveAdminRoom(
+		r.Context(),
+		currentUser.ID,
+		currentUser.Role == users.RoleSuperuser,
+		roomID,
+		req.Mode,
+		time.Now(),
+	)
+	if err != nil {
+		switch {
+		case errors.Is(err, db.ErrInvalidID):
+			httpapi.WriteError(w, http.StatusBadRequest, "invalid_room_id", "Некорректный id помещения")
+		case errors.Is(err, db.ErrInvalidArgument):
+			httpapi.WriteError(w, http.StatusBadRequest, "invalid_request", "Некорректный режим архивирования")
+		case errors.Is(err, db.ErrForbidden):
+			httpapi.WriteError(w, http.StatusForbidden, "forbidden", "Недостаточно прав")
+		case errors.Is(err, db.ErrNotFound):
+			httpapi.WriteError(w, http.StatusNotFound, "room_not_found", "Помещение не найдено")
+		case errors.Is(err, db.ErrConflict):
+			httpapi.WriteError(w, http.StatusConflict, "room_has_active_bookings", "Нельзя архивировать помещение, пока есть действующие или будущие бронирования")
+		default:
+			log.Printf("[server] ArchiveAdminRoomHandler: %v", err)
+			httpapi.WriteError(w, http.StatusInternalServerError, "internal_error", "Внутренняя ошибка сервера")
+		}
+		return
+	}
+
+	httpapi.WriteJSON(w, http.StatusOK, result)
+}
+
 func currentUserFromRequest(w http.ResponseWriter, r *http.Request) (*users.User, bool) {
 	currentUser, ok := auth.UserFromContext(r.Context())
 	if !ok || currentUser == nil {
