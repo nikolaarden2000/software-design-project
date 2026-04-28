@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/nikolaarden2000/software-design-project/backend/auth"
 	"github.com/nikolaarden2000/software-design-project/backend/db"
 	"github.com/nikolaarden2000/software-design-project/backend/httpapi"
 	"github.com/nikolaarden2000/software-design-project/backend/rooms"
@@ -281,20 +280,6 @@ func (s *Server) ArchiveAdminRoomHandler(w http.ResponseWriter, r *http.Request)
 	httpapi.WriteJSON(w, http.StatusOK, result)
 }
 
-func currentUserFromRequest(w http.ResponseWriter, r *http.Request) (*users.User, bool) {
-	currentUser, ok := auth.UserFromContext(r.Context())
-	if !ok || currentUser == nil {
-		httpapi.WriteError(w, http.StatusUnauthorized, "unauthorized", "Необходимо войти в аккаунт")
-		return nil, false
-	}
-
-	return currentUser, true
-}
-
-type cancelAdminBookingRequest struct {
-	Reason string `json:"reason"`
-}
-
 func (s *Server) AdminBookingsHandler(w http.ResponseWriter, r *http.Request) {
 	currentUser, ok := currentUserFromRequest(w, r)
 	if !ok {
@@ -348,9 +333,6 @@ func (s *Server) CancelAdminBookingHandler(w http.ResponseWriter, r *http.Reques
 	if !ok {
 		return
 	}
-
-	var req cancelAdminBookingRequest
-	_ = json.NewDecoder(r.Body).Decode(&req)
 
 	err := s.bookingRepo.CancelAdminBooking(
 		r.Context(),

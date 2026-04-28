@@ -5,8 +5,6 @@ import (
 	"errors"
 	"log"
 	"net/http"
-	"strconv"
-	"strings"
 
 	"github.com/nikolaarden2000/software-design-project/backend/auth"
 	"github.com/nikolaarden2000/software-design-project/backend/db"
@@ -145,30 +143,6 @@ func (s *Server) CreateLocationHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httpapi.WriteJSON(w, http.StatusCreated, location)
-}
-
-func optionalIntQuery(w http.ResponseWriter, r *http.Request, name, code, message string) (*int, bool) {
-	raw := strings.TrimSpace(r.URL.Query().Get(name))
-	if raw == "" {
-		return nil, true
-	}
-
-	value, err := strconv.Atoi(raw)
-	if err != nil || value <= 0 {
-		httpapi.WriteError(w, http.StatusBadRequest, code, message)
-		return nil, false
-	}
-
-	return &value, true
-}
-
-func optionalStringQuery(r *http.Request, name string) *string {
-	raw := strings.TrimSpace(r.URL.Query().Get(name))
-	if raw == "" {
-		return nil
-	}
-
-	return &raw
 }
 
 func (s *Server) ListAdminsHandler(w http.ResponseWriter, r *http.Request) {

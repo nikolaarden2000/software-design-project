@@ -5,7 +5,6 @@ import (
 	"errors"
 	"log"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/nikolaarden2000/software-design-project/backend/auth"
@@ -354,28 +353,4 @@ func (s *Server) CancelBookingHandler(w http.ResponseWriter, r *http.Request) {
 		"id":     bookingID,
 		"status": "canceled",
 	})
-}
-
-func parsePositiveInt(raw string, fallback int) int {
-	if raw == "" {
-		return fallback
-	}
-
-	value, err := strconv.Atoi(raw)
-	if err != nil || value < 0 {
-		return fallback
-	}
-
-	return value
-}
-
-func parsePathID(w http.ResponseWriter, r *http.Request, name, code, message string) (int, bool) {
-	raw := r.PathValue(name)
-	id, err := strconv.Atoi(raw)
-	if err != nil || id <= 0 {
-		httpapi.WriteError(w, http.StatusBadRequest, code, message)
-		return 0, false
-	}
-
-	return id, true
 }
