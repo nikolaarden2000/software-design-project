@@ -54,17 +54,25 @@ type AdminRoomListItem struct {
 }
 
 type AdminRoomDetails struct {
-	ID              int      `json:"id"`
-	LocationID      int      `json:"location_id"`
-	Title           string   `json:"title"`
-	Description     string   `json:"description"`
-	Price           int      `json:"price"`
-	Capacity        int      `json:"capacity"`
-	AvailableFrom   string   `json:"available_from"`
-	AvailableTo     string   `json:"available_to"`
-	Images          []string `json:"images"`
-	Status          string   `json:"status"`
-	RejectionReason *string  `json:"rejection_reason"`
+	ID              int              `json:"id"`
+	LocationID      int              `json:"location_id"`
+	Title           string           `json:"title"`
+	Description     string           `json:"description"`
+	Price           int              `json:"price"`
+	Capacity        int              `json:"capacity"`
+	AvailableFrom   string           `json:"available_from"`
+	AvailableTo     string           `json:"available_to"`
+	Images          []string         `json:"images"`
+	Status          string           `json:"status"`
+	RejectionReason *string          `json:"rejection_reason"`
+	Archive         AdminRoomArchive `json:"archive"`
+}
+
+type AdminRoomArchive struct {
+	CanArchiveNow             bool    `json:"can_archive_now"`
+	HasActiveOrFutureBookings bool    `json:"has_active_or_future_bookings"`
+	BookingDisabled           bool    `json:"booking_disabled"`
+	ScheduledFor              *string `json:"scheduled_for"`
 }
 
 type AdminRoomInput struct {

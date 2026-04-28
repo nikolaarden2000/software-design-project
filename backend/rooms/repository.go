@@ -22,6 +22,7 @@ const (
 		WHERE r.id > $1
 		  AND l.city = $2
 		  AND r.status = 'published'
+			AND r.booking_disabled = false
 		ORDER BY r.id ASC
 		LIMIT $3`
 
@@ -35,6 +36,7 @@ const (
 			WHERE l.company_id = c.id
 			  AND l.city = $1
 			  AND r.status = 'published'
+				AND r.booking_disabled = false
 		)`
 
 	queryGetRoomPageData = `
@@ -54,7 +56,8 @@ const (
 		JOIN locations l ON r.location_id = l.id
 		JOIN companies c ON l.company_id = c.id
 		WHERE r.id = $1
-		  AND r.status = 'published'`
+		  AND r.status = 'published'
+			AND r.booking_disabled = false`
 
 	queryListAdminRooms = `
 		SELECT
@@ -92,7 +95,16 @@ const (
 			r.available_to,
 			r.images,
 			r.status::text,
-			r.rejection_reason
+			r.rejection_reason,
+			r.booking_disabled,
+			r.archive_scheduled_for,
+			EXISTS (
+				SELECT 1
+				FROM bookings b
+				WHERE b.room_id = r.id
+					AND b.status = 'booked'
+					AND b.end_time > now()
+			) AS has_active_or_future_bookings
 		FROM rooms r
 		WHERE r.id = $1`
 
@@ -357,6 +369,8 @@ func (r *Repository) GetAdminRoom(ctx context.Context, adminID int, includeAll b
 	var room AdminRoomDetails
 	var availableFrom, availableTo time.Time
 	var rejectionReason sql.NullString
+	var archiveScheduledFor sql.NullTime
+	var hasActiveOrFutureBookings bool
 
 	err := r.q.QueryRow(ctx, queryGetAdminRoom, roomID).Scan(
 		&room.ID,
@@ -370,6 +384,9 @@ func (r *Repository) GetAdminRoom(ctx context.Context, adminID int, includeAll b
 		&room.Images,
 		&room.Status,
 		&rejectionReason,
+		&room.Archive.BookingDisabled,
+		&archiveScheduledFor,
+		&hasActiveOrFutureBookings,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -381,6 +398,14 @@ func (r *Repository) GetAdminRoom(ctx context.Context, adminID int, includeAll b
 	room.AvailableFrom = availableFrom.Format("15:04")
 	room.AvailableTo = availableTo.Format("15:04")
 	room.RejectionReason = stringPtrFromNull(rejectionReason)
+
+	room.Archive.HasActiveOrFutureBookings = hasActiveOrFutureBookings
+	room.Archive.CanArchiveNow = room.Status != StatusArchived && !hasActiveOrFutureBookings
+
+	if archiveScheduledFor.Valid {
+		scheduledFor := archiveScheduledFor.Time.UTC().Format(time.RFC3339)
+		room.Archive.ScheduledFor = &scheduledFor
+	}
 
 	return &room, nil
 }
