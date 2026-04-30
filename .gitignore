@@ -2,6 +2,10 @@
 node_modules/
 **/node_modules/
 
+# Playwright artifacts
+playwright-report/
+test-results/
+
 # Test coverage
 coverage/
 **/coverage/
