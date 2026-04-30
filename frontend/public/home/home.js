@@ -1,4 +1,4 @@
-(function () {
+
   'use strict';
 
   const BATCH_SIZE = 100;
@@ -845,4 +845,87 @@
   function navigate(url) {
     window.location.href = url;
   }
-})();
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    init,
+    bindEvents,
+    loadCurrentUser,
+    loadInitialData,
+    loadFilters,
+    loadMoreRooms,
+    resetCatalogState,
+    addItems,
+
+    setCity,
+    openCityModal,
+    closeCityModal,
+    filterCityList,
+    showCityError,
+    hideCityError,
+
+    setFiltersEnabled,
+    refreshFilterValues,
+    applyFilters,
+
+    renderCards,
+    ensureSentinel,
+    showCenteredMessage,
+    showStatusBar,
+    hideStatusBar,
+
+    navigate,
+
+    __getAvailableCitiesForTests: () => availableCities,
+
+    __setCityForTests: (value) => { city = value; },
+    __getCityForTests: () => city,
+
+    __setIsAuthenticatedForTests: (value) => { isAuthenticated = value; },
+    __getIsAuthenticatedForTests: () => isAuthenticated,
+
+    __setCurrentUserRoleForTests: (value) => { currentUserRole = value; },
+    __getCurrentUserRoleForTests: () => currentUserRole,
+
+    __setAllItemsForTests: (value) => { allItems = value; },
+    __getAllItemsForTests: () => allItems,
+
+    __setAllCompaniesForTests: (value) => { allCompanies = value; },
+    __getAllCompaniesForTests: () => allCompanies,
+
+    __setLastAfterIdForTests: (value) => { lastAfterId = value; },
+    __getLastAfterIdForTests: () => lastAfterId,
+
+    __setHasMoreForTests: (value) => { hasMore = value; },
+    __getHasMoreForTests: () => hasMore,
+
+    __setIsLoadingForTests: (value) => { isLoading = value; },
+    __getIsLoadingForTests: () => isLoading,
+
+    __setFilteringForTests: (value) => { filtering = value; },
+    __getFilteringForTests: () => filtering,
+
+    __setFiltersEnabledForTests: (value) => { filtersEnabled = value; },
+    __getFiltersEnabledForTests: () => filtersEnabled,
+
+    __setInfiniteScrollObserverForTests: (value) => { infiniteScrollObserver = value; },
+    __getInfiniteScrollObserverForTests: () => infiniteScrollObserver,
+
+    __resetStateForTests: () => {
+      city = document.body.dataset.initialCity || 'Москва';
+      isAuthenticated = false;
+      currentUserRole = null;
+      allItems = [];
+      allCompanies = [];
+      lastAfterId = 0;
+      hasMore = true;
+      isLoading = false;
+      filtering = false;
+      filtersEnabled = false;
+
+      if (infiniteScrollObserver) {
+        infiniteScrollObserver.disconnect?.();
+      }
+      infiniteScrollObserver = null;
+    }
+  };
+}

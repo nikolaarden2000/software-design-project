@@ -1,452 +1,598 @@
-/**
- * auth.test.js
- * Тесты для auth.js
- */
 
-const { setMessage, postJson, initAuthModule } = require('./auth.js');
-async function flushPromises() {
-  await Promise.resolve();
-  await Promise.resolve();
-  await Promise.resolve();
-  await Promise.resolve();
+'use strict';
+
+const AUTH_PATH = './auth'; 
+
+let auth;
+
+function flushPromises(times = 5) {
+  let chain = Promise.resolve();
+
+  for (let i = 0; i < times; i += 1) {
+    chain = chain.then(() => Promise.resolve());
+  }
+
+  return chain;
 }
-describe('auth.js', () => {
-  beforeEach(() => {
-    jest.useFakeTimers();
-    jest.spyOn(global, 'setTimeout');
-    jest.spyOn(global, 'clearTimeout');
 
-    document.body.innerHTML = '';
-    window.__USER__ = {};
-    global.fetch = jest.fn();
-    global.confirm = jest.fn();
-    delete window.location;
-    window.location = { href: '', reload: jest.fn() };
-  });
+function setupDom() {
+  document.body.innerHTML = `
+    <div class="auth-card">
+      <div class="auth-tabs">
+        <button id="tab-login" class="active" type="button">Вход</button>
+        <button id="tab-register" type="button">Регистрация</button>
+      </div>
 
-  afterEach(() => {
-    jest.runOnlyPendingTimers();
-    jest.useRealTimers();
-    jest.restoreAllMocks();
-  });
-
-  function renderGuestAuthDOM() {
-    document.body.innerHTML = `
       <div id="authMessage"></div>
 
-      <button class="auth-tab active" id="tab-login" data-tab="login">Вход</button>
-      <button class="auth-tab" id="tab-register" data-tab="register">Регистрация</button>
-
-      <form id="loginForm" class="auth-form">
-        <input id="loginEmail" type="email" />
-        <input id="loginPassword" type="password" />
-        <button type="submit" id="loginSubmit">Войти</button>
+      <form id="loginForm">
+        <input id="loginEmail" />
+        <input id="loginPassword" />
+        <button id="loginSubmit" type="submit">Войти</button>
       </form>
 
-      <form id="registerForm" class="auth-form hidden">
-        <input id="regUsername" type="text" />
-        <input id="regEmail" type="email" />
-        <input id="regPassword" type="password" />
-        <input id="regConfirm" type="password" />
-        <button type="submit" id="registerSubmit">Зарегистрироваться</button>
+      <form id="registerForm" class="hidden">
+        <input id="regUsername" />
+        <input id="regEmail" />
+        <input id="regPassword" />
+        <input id="regConfirm" />
+        <button id="registerSubmit" type="submit">Зарегистрироваться</button>
       </form>
-    `;
-  }
+    </div>
+  `;
+}
 
-  function renderAuthorizedDOM() {
-    document.body.innerHTML = `
-      <div id="authMessage"></div>
-      <button id="logoutBtn">Выйти</button>
-    `;
-  }
+function setupApi() {
+  window.Api = {
+    getMe: jest.fn().mockResolvedValue({
+      authenticated: false
+    }),
 
-  describe('setMessage', () => {
-    test('setMessage: корректно устанавливает текст и цвет для ошибки', () => {
-      // Техника тест-дизайна: классы эквивалентности
-      document.body.innerHTML = `<div id="authMessage"></div>`;
+    loginUser: jest.fn().mockResolvedValue({
+      ok: true
+    }),
 
-      const el = document.getElementById('authMessage');
-      setMessage('Ошибка', 'error', true);
+    registerUser: jest.fn().mockResolvedValue({
+      ok: true
+    }),
 
-      expect(el.textContent).toBe('Ошибка');
-      expect(el.style.color).toBe('rgb(220, 38, 38)');
+    logoutUser: jest.fn().mockResolvedValue({
+      ok: true
+    })
+  };
+}
+
+function createLogoutButton() {
+  const logoutBtn = document.createElement('button');
+  logoutBtn.id = 'logoutBtn';
+  logoutBtn.type = 'button';
+  logoutBtn.textContent = 'Выйти';
+  document.body.appendChild(logoutBtn);
+
+  return logoutBtn;
+}
+
+beforeEach(() => {
+  jest.resetModules();
+  jest.useFakeTimers();
+
+  setupDom();
+  setupApi();
+
+  global.confirm = jest.fn();
+
+  jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+  auth = require(AUTH_PATH);
+});
+
+afterEach(() => {
+  jest.clearAllTimers();
+  jest.useRealTimers();
+  jest.restoreAllMocks();
+});
+
+describe('auth.js - модульные тесты', () => {
+  /*
+   * Техника тест-дизайна: smoke-тестирование.
+   * Проверяем базовый сценарий инициализации модуля:
+   * обработчики навешиваются, текущий пользователь проверяется.
+   */
+  test('initAuthModule: инициализирует модуль авторизации и проверяет пользователя', async () => {
+    await auth.initAuthModule();
+
+    expect(window.Api.getMe).toHaveBeenCalled();
+
+    document.getElementById('tab-register').click();
+
+    expect(document.getElementById('tab-register').classList.contains('active')).toBe(true);
+    expect(document.getElementById('tab-login').classList.contains('active')).toBe(false);
+    expect(document.getElementById('registerForm').classList.contains('hidden')).toBe(false);
+    expect(document.getElementById('loginForm').classList.contains('hidden')).toBe(true);
+  });
+
+  /*
+   * Техника тест-дизайна: негативное тестирование.
+   * Проверяем защитное условие: если элемента authMessage нет, функция не падает.
+   */
+  test('setMessage: если authMessage отсутствует, функция завершается без ошибки', () => {
+    document.getElementById('authMessage').remove();
+
+    expect(() => auth.setMessage('Текст', 'error')).not.toThrow();
+  });
+
+  /*
+   * Техника тест-дизайна: тестирование состояний и переходов.
+   * Проверяем переход между вкладками "Вход" и "Регистрация".
+   */
+  test('bindTabs: переключает вкладки входа и регистрации', () => {
+    const tabLogin = document.getElementById('tab-login');
+    const tabRegister = document.getElementById('tab-register');
+    const loginForm = document.getElementById('loginForm');
+    const registerForm = document.getElementById('registerForm');
+
+    auth.bindTabs(tabLogin, tabRegister, loginForm, registerForm);
+
+    tabRegister.click();
+
+    expect(tabRegister.classList.contains('active')).toBe(true);
+    expect(tabLogin.classList.contains('active')).toBe(false);
+    expect(registerForm.classList.contains('hidden')).toBe(false);
+    expect(loginForm.classList.contains('hidden')).toBe(true);
+
+    tabLogin.click();
+
+    expect(tabLogin.classList.contains('active')).toBe(true);
+    expect(tabRegister.classList.contains('active')).toBe(false);
+    expect(loginForm.classList.contains('hidden')).toBe(false);
+    expect(registerForm.classList.contains('hidden')).toBe(true);
+  });
+
+  /*
+   * Техника тест-дизайна: негативное тестирование.
+   * Проверяем защитное условие: если элементов вкладок нет, функция не падает.
+   */
+  test('bindTabs: если один из элементов отсутствует, функция не падает', () => {
+    expect(() => auth.bindTabs(null, null, null, null)).not.toThrow();
+  });
+
+  /*
+   * Техника тест-дизайна: классы эквивалентности.
+   * Проверяем валидные и невалидные email-адреса как разные классы входных данных.
+   */
+  test('isValidEmail: определяет корректные и некорректные email', () => {
+    const validEmails = [
+      'user@example.com',
+      'test.user@mail.ru',
+      'student_123@university.edu'
+    ];
+
+    const invalidEmails = [
+      '',
+      'plain-text',
+      'user@',
+      '@example.com',
+      'user@example',
+      'user example@mail.ru'
+    ];
+
+    validEmails.forEach(email => {
+      expect(auth.isValidEmail(email)).toBe(true);
     });
 
-    test('setMessage: для success задаёт успешный цвет', () => {
-      // Техника тест-дизайна: классы эквивалентности
-      document.body.innerHTML = `<div id="authMessage"></div>`;
-
-      const el = document.getElementById('authMessage');
-      setMessage('Успех', 'success', true);
-
-      expect(el.textContent).toBe('Успех');
-      expect(el.style.color).toBe('rgb(6, 95, 70)');
-    });
-
-    test('setMessage: автоматически очищает сообщение через 5000 мс', () => {
-      // Техника тест-дизайна: граничные условия
-      document.body.innerHTML = `<div id="authMessage"></div>`;
-
-      const el = document.getElementById('authMessage');
-      setMessage('Временное сообщение', 'info', false);
-
-      expect(el.textContent).toBe('Временное сообщение');
-
-      jest.advanceTimersByTime(4999);
-      expect(el.textContent).toBe('Временное сообщение');
-
-      jest.advanceTimersByTime(1);
-      expect(el.textContent).toBe('');
-    });
-
-    test('setMessage: ничего не делает, если элемента authMessage нет', () => {
-      // Техника тест-дизайна: предугадывание ошибок
-      expect(() => setMessage('text', 'info', false)).not.toThrow();
+    invalidEmails.forEach(email => {
+      expect(auth.isValidEmail(email)).toBe(false);
     });
   });
 
-  describe('postJson', () => {
-    test('postJson: отправляет POST с JSON, credentials и body', async () => {
-      // Техника тест-дизайна: классы эквивалентности
-      const fakeResponse = { ok: true };
-      global.fetch.mockResolvedValue(fakeResponse);
+  /*
+   * Техника тест-дизайна: классы эквивалентности.
+   * Проверяем класс некорректных данных формы входа: пустой email или пароль.
+   */
+  test('bindLoginForm: при пустых полях показывает ошибку и не вызывает API', async () => {
+    const loginForm = document.getElementById('loginForm');
 
-      const payload = { email: 'test@mail.com', password: '123456' };
-      const result = await postJson('/api/login', payload);
+    auth.bindLoginForm(loginForm);
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify(payload)
-      });
-      expect(result).toBe(fakeResponse);
-    });
+    document.getElementById('loginEmail').value = '';
+    document.getElementById('loginPassword').value = '';
+
+    loginForm.dispatchEvent(
+      new Event('submit', {
+        bubbles: true,
+        cancelable: true
+      })
+    );
+
+    await flushPromises();
+
+    expect(document.getElementById('authMessage').textContent).toBe('Введите email и пароль');
+    expect(window.Api.loginUser).not.toHaveBeenCalled();
   });
 
-  describe('initAuthModule - tabs', () => {
-    test('initAuthModule: переключает вкладки login/register', () => {
-      // Техника тест-дизайна: переходы состояний
-      renderGuestAuthDOM();
-      initAuthModule();
+  /*
+   * Техника тест-дизайна: негативное тестирование.
+   * Проверяем ошибочный ввод: email имеет неправильный формат.
+   */
+  test('bindLoginForm: при некорректном email показывает ошибку и не вызывает API', async () => {
+    const loginForm = document.getElementById('loginForm');
 
-      const tabLogin = document.getElementById('tab-login');
-      const tabRegister = document.getElementById('tab-register');
-      const loginForm = document.getElementById('loginForm');
-      const registerForm = document.getElementById('registerForm');
+    auth.bindLoginForm(loginForm);
 
-      tabRegister.click();
-      expect(tabRegister.classList.contains('active')).toBe(true);
-      expect(tabLogin.classList.contains('active')).toBe(false);
-      expect(registerForm.classList.contains('hidden')).toBe(false);
-      expect(loginForm.classList.contains('hidden')).toBe(true);
+    document.getElementById('loginEmail').value = 'wrong-email';
+    document.getElementById('loginPassword').value = 'password123';
 
-      tabLogin.click();
-      expect(tabLogin.classList.contains('active')).toBe(true);
-      expect(tabRegister.classList.contains('active')).toBe(false);
-      expect(loginForm.classList.contains('hidden')).toBe(false);
-      expect(registerForm.classList.contains('hidden')).toBe(true);
-    });
+    loginForm.dispatchEvent(
+      new Event('submit', {
+        bubbles: true,
+        cancelable: true
+      })
+    );
 
-    test('initAuthModule: если пользователь уже авторизован, логика форм не инициализируется', () => {
-      // Техника тест-дизайна: классы эквивалентности
-      renderGuestAuthDOM();
-      window.__USER__ = { auth: true };
+    await flushPromises();
 
-      initAuthModule();
-
-      const tabRegister = document.getElementById('tab-register');
-      const registerForm = document.getElementById('registerForm');
-      const loginForm = document.getElementById('loginForm');
-
-      tabRegister.click();
-
-      expect(registerForm.classList.contains('hidden')).toBe(true);
-      expect(loginForm.classList.contains('hidden')).toBe(false);
-    });
+    expect(document.getElementById('authMessage').textContent).toBe(
+      'Пожалуйста, введите корректный адрес электронной почты'
+    );
+    expect(window.Api.loginUser).not.toHaveBeenCalled();
   });
 
-  describe('initAuthModule - register', () => {
-    test('register: невалидный email показывает ошибку и не отправляет запрос', async () => {
-      // Техника тест-дизайна: классы эквивалентности
-      renderGuestAuthDOM();
-      initAuthModule();
 
-      document.getElementById('regUsername').value = 'slava';
-      document.getElementById('regEmail').value = 'wrong-email';
-      document.getElementById('regPassword').value = '123456';
-      document.getElementById('regConfirm').value = '123456';
-
-      document.getElementById('registerForm').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-
-      expect(document.getElementById('authMessage').textContent)
-        .toBe('Пожалуйста, введите корректный адрес электронной почты (например, name@mail.com)');
-      expect(global.fetch).not.toHaveBeenCalled();
+  /*
+   * Техника тест-дизайна: негативное тестирование.
+   * Проверяем ошибку авторизации при неверном email или пароле.
+   */
+  test('bindLoginForm: при invalid_credentials показывает понятное сообщение', async () => {
+    window.Api.loginUser.mockRejectedValueOnce({
+      code: 'invalid_credentials'
     });
 
-test('register: пустые поля показывают ошибку', () => {
-  // Техника тест-дизайна: классы эквивалентности
-  renderGuestAuthDOM();
-  initAuthModule();
+    const loginForm = document.getElementById('loginForm');
 
-  document.getElementById('regUsername').value = '';
-  document.getElementById('regEmail').value = 'test@mail.com';
-  document.getElementById('regPassword').value = '123456';
-  document.getElementById('regConfirm').value = '123456';
+    auth.bindLoginForm(loginForm);
 
-  document.getElementById('registerForm').dispatchEvent(
-    new Event('submit', { bubbles: true, cancelable: true })
-  );
+    document.getElementById('loginEmail').value = 'user@example.com';
+    document.getElementById('loginPassword').value = 'wrong-password';
 
-  expect(document.getElementById('authMessage').textContent).toBe('Заполните все поля');
-  expect(global.fetch).not.toHaveBeenCalled();
-});
+    loginForm.dispatchEvent(
+      new Event('submit', {
+        bubbles: true,
+        cancelable: true
+      })
+    );
 
-    test('register: несовпадение паролей показывает ошибку', async () => {
-      // Техника тест-дизайна: попарное тестирование
-      renderGuestAuthDOM();
-      initAuthModule();
+    await flushPromises();
 
-      document.getElementById('regUsername').value = 'slava';
-      document.getElementById('regEmail').value = 'test@mail.com';
-      document.getElementById('regPassword').value = '123456';
-      document.getElementById('regConfirm').value = '654321';
-
-      document.getElementById('registerForm').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-
-      expect(document.getElementById('authMessage').textContent).toBe('Пароли не совпадают');
-      expect(global.fetch).not.toHaveBeenCalled();
-    });
-
- test('register: успешная регистрация переключает на вкладку входа', async () => {
-  // Техника тест-дизайна: сценарий использования
-  renderGuestAuthDOM();
-  global.fetch.mockResolvedValue({ ok: true });
-  initAuthModule();
-
-  const tabLogin = document.getElementById('tab-login');
-
-  document.getElementById('regUsername').value = 'slava';
-  document.getElementById('regEmail').value = 'test@mail.com';
-  document.getElementById('regPassword').value = '123456';
-  document.getElementById('regConfirm').value = '123456';
-
-  document.getElementById('tab-register').click();
-
-  document.getElementById('registerForm').dispatchEvent(
-    new Event('submit', { bubbles: true, cancelable: true })
-  );
-
-  await flushPromises();
-
-  expect(global.fetch).toHaveBeenCalledWith('/api/register', expect.objectContaining({
-    method: 'POST'
-  }));
-  expect(document.getElementById('authMessage').textContent)
-    .toBe('Регистрация успешна. Пожалуйста, войдите в аккаунт.');
-  expect(tabLogin.classList.contains('active')).toBe(true);
-});
-
-test('register: статус 409 показывает что email занят', async () => {
-  // Техника тест-дизайна: анализ альтернативных ветвей
-  renderGuestAuthDOM();
-  global.fetch.mockResolvedValue({ ok: false, status: 409 });
-  initAuthModule();
-
-  document.getElementById('regUsername').value = 'slava';
-  document.getElementById('regEmail').value = 'test@mail.com';
-  document.getElementById('regPassword').value = '123456';
-  document.getElementById('regConfirm').value = '123456';
-
-  document.getElementById('registerForm').dispatchEvent(
-    new Event('submit', { bubbles: true, cancelable: true })
-  );
-
-  await flushPromises();
-
-  expect(document.getElementById('authMessage').textContent).toBe('Указанный email уже занят');
-});
-
-test('register: ошибка сети показывает сообщение об ошибке соединения', async () => {
-  // Техника тест-дизайна: предугадывание ошибок
-  renderGuestAuthDOM();
-  global.fetch.mockRejectedValue(new Error('Network error'));
-  initAuthModule();
-
-  document.getElementById('regUsername').value = 'slava';
-  document.getElementById('regEmail').value = 'test@mail.com';
-  document.getElementById('regPassword').value = '123456';
-  document.getElementById('regConfirm').value = '123456';
-
-  document.getElementById('registerForm').dispatchEvent(
-    new Event('submit', { bubbles: true, cancelable: true })
-  );
-
-  await flushPromises();
-
-  expect(document.getElementById('authMessage').textContent).toBe('Ошибка соединения');
-});
-
-  describe('initAuthModule - login', () => {
-    test('login: пустые email и пароль показывают ошибку', async () => {
-      // Техника тест-дизайна: классы эквивалентности
-      renderGuestAuthDOM();
-      initAuthModule();
-
-      document.getElementById('loginEmail').value = '';
-      document.getElementById('loginPassword').value = '';
-
-      document.getElementById('loginForm').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-
-      expect(document.getElementById('authMessage').textContent).toBe('Введите email и пароль');
-      expect(global.fetch).not.toHaveBeenCalled();
-    });
-
-    test('login: невалидный email показывает ошибку', async () => {
-      // Техника тест-дизайна: классы эквивалентности
-      renderGuestAuthDOM();
-      initAuthModule();
-
-      document.getElementById('loginEmail').value = 'bad-email';
-      document.getElementById('loginPassword').value = '123456';
-
-      document.getElementById('loginForm').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-
-      expect(document.getElementById('authMessage').textContent)
-        .toBe('Пожалуйста, введите корректный адрес электронной почты (например, name@mail.com)');
-      expect(global.fetch).not.toHaveBeenCalled();
-    });
-
-test('login: успешный вход делает редирект на главную через 500 мс', async () => {
-  // Техника тест-дизайна: граничные условия
-  renderGuestAuthDOM();
-  global.fetch.mockResolvedValue({ ok: true });
-  initAuthModule();
-
-  document.getElementById('loginEmail').value = 'test@mail.com';
-  document.getElementById('loginPassword').value = '123456';
-
-  document.getElementById('loginForm').dispatchEvent(
-    new Event('submit', { bubbles: true, cancelable: true })
-  );
-
-  await flushPromises();
-
-  expect(document.getElementById('authMessage').textContent).toBe('Вход успешен. Перенаправление...');
-  expect(window.location.href).toBe('');
-
-  jest.advanceTimersByTime(499);
-  expect(window.location.href).toBe('');
-
-  jest.advanceTimersByTime(1);
-  expect(window.location.href).toBe('/');
-});
-
-test('login: статус 401 показывает сообщение о неверных данных', async () => {
-  // Техника тест-дизайна: таблица решений
-  renderGuestAuthDOM();
-  global.fetch.mockResolvedValue({ ok: false, status: 401 });
-  initAuthModule();
-
-  document.getElementById('loginEmail').value = 'test@mail.com';
-  document.getElementById('loginPassword').value = 'wrong';
-
-  document.getElementById('loginForm').dispatchEvent(
-    new Event('submit', { bubbles: true, cancelable: true })
-  );
-
-  await flushPromises();
-
-  expect(document.getElementById('authMessage').textContent).toBe('Неверный email или пароль');
-});
-
-test('login: ошибка сети показывает сообщение об ошибке соединения', async () => {
-  // Техника тест-дизайна: предугадывание ошибок
-  renderGuestAuthDOM();
-  global.fetch.mockRejectedValue(new Error('Network error'));
-  initAuthModule();
-
-  document.getElementById('loginEmail').value = 'test@mail.com';
-  document.getElementById('loginPassword').value = '123456';
-
-  document.getElementById('loginForm').dispatchEvent(
-    new Event('submit', { bubbles: true, cancelable: true })
-  );
-
-  await flushPromises();
-
-  expect(document.getElementById('authMessage').textContent).toBe('Ошибка соединения');
-});
+    expect(document.getElementById('authMessage').textContent).toBe(
+      'Неверный email или пароль'
+    );
+    expect(document.getElementById('loginSubmit').disabled).toBe(false);
   });
 
-  describe('initAuthModule - logout', () => {
-    test('logout: отмена confirm не отправляет запрос', async () => {
-      // Техника тест-дизайна: классы эквивалентности
-      renderAuthorizedDOM();
-      window.__USER__ = { auth: false };
-      global.confirm.mockReturnValue(false);
-
-      initAuthModule();
-      document.getElementById('logoutBtn').click();
-
-      expect(global.fetch).not.toHaveBeenCalled();
-    });
-
-    test('logout: успешный выход делает редирект через 600 мс', async () => {
-      // Техника тест-дизайна: граничные условия
-      renderAuthorizedDOM();
-      window.__USER__ = { auth: false };
-      global.confirm.mockReturnValue(true);
-      global.fetch.mockResolvedValue({ ok: true });
-
-      initAuthModule();
-      document.getElementById('logoutBtn').click();
-
-      await Promise.resolve();
-      await Promise.resolve();
-
-      expect(document.getElementById('authMessage').textContent)
-        .toBe('Вы вышли из аккаунта. Перенаправление на главную...');
-      expect(window.location.href).toBe('');
-
-      jest.advanceTimersByTime(599);
-      expect(window.location.href).toBe('');
-
-      jest.advanceTimersByTime(1);
-      expect(window.location.href).toBe('/');
-    });
-
-    test('logout: статус 400 показывает что сессия отсутствует', async () => {
-      // Техника тест-дизайна: таблица решений
-      renderAuthorizedDOM();
-      window.__USER__ = { auth: false };
-      global.confirm.mockReturnValue(true);
-      global.fetch.mockResolvedValue({ ok: false, status: 400 });
-
-      initAuthModule();
-      document.getElementById('logoutBtn').click();
-
-      await Promise.resolve();
-      await Promise.resolve();
-
-      expect(document.getElementById('authMessage').textContent).toBe('Сессия отсутствует или истекла');
-    });
-
-    test('logout: ошибка сети показывает сообщение об ошибке соединения', async () => {
-      // Техника тест-дизайна: предугадывание ошибок
-      renderAuthorizedDOM();
-      window.__USER__ = { auth: false };
-      global.confirm.mockReturnValue(true);
-      global.fetch.mockRejectedValue(new Error('Network error'));
-
-      initAuthModule();
-      document.getElementById('logoutBtn').click();
-
-      await Promise.resolve();
-      await Promise.resolve();
-
-      expect(document.getElementById('authMessage').textContent).toBe('Ошибка соединения');
-    });
+  /*
+   * Техника тест-дизайна: негативное тестирование.
+   * Проверяем защитное условие: если формы входа нет, функция не падает.
+   */
+  test('bindLoginForm: если loginForm отсутствует, функция не падает', () => {
+    expect(() => auth.bindLoginForm(null)).not.toThrow();
   });
-});
+
+  /*
+   * Техника тест-дизайна: классы эквивалентности.
+   * Проверяем класс некорректных данных формы регистрации: не все поля заполнены.
+   */
+  test('bindRegisterForm: при пустых полях показывает ошибку и не вызывает API', async () => {
+    const registerForm = document.getElementById('registerForm');
+
+    auth.bindRegisterForm(registerForm);
+
+    document.getElementById('regUsername').value = '';
+    document.getElementById('regEmail').value = '';
+    document.getElementById('regPassword').value = '';
+    document.getElementById('regConfirm').value = '';
+
+    registerForm.dispatchEvent(
+      new Event('submit', {
+        bubbles: true,
+        cancelable: true
+      })
+    );
+
+    await flushPromises();
+
+    expect(document.getElementById('authMessage').textContent).toBe('Заполните все поля');
+    expect(window.Api.registerUser).not.toHaveBeenCalled();
+  });
+
+  /*
+   * Техника тест-дизайна: негативное тестирование.
+   * Проверяем ошибочный формат email при регистрации.
+   */
+  test('bindRegisterForm: при некорректном email показывает ошибку и не вызывает API', async () => {
+    const registerForm = document.getElementById('registerForm');
+
+    auth.bindRegisterForm(registerForm);
+
+    document.getElementById('regUsername').value = 'test-user';
+    document.getElementById('regEmail').value = 'wrong-email';
+    document.getElementById('regPassword').value = 'password123';
+    document.getElementById('regConfirm').value = 'password123';
+
+    registerForm.dispatchEvent(
+      new Event('submit', {
+        bubbles: true,
+        cancelable: true
+      })
+    );
+
+    await flushPromises();
+
+    expect(document.getElementById('authMessage').textContent).toBe(
+      'Пожалуйста, введите корректный адрес электронной почты'
+    );
+    expect(window.Api.registerUser).not.toHaveBeenCalled();
+  });
+
+  /*
+   * Техника тест-дизайна: анализ граничных значений.
+   * Проверяем границу совпадения паролей: два значения должны быть строго одинаковыми.
+   */
+  test('bindRegisterForm: если пароль и подтверждение отличаются, показывает ошибку', async () => {
+    const registerForm = document.getElementById('registerForm');
+
+    auth.bindRegisterForm(registerForm);
+
+    document.getElementById('regUsername').value = 'test-user';
+    document.getElementById('regEmail').value = 'user@example.com';
+    document.getElementById('regPassword').value = 'password123';
+    document.getElementById('regConfirm').value = 'password124';
+
+    registerForm.dispatchEvent(
+      new Event('submit', {
+        bubbles: true,
+        cancelable: true
+      })
+    );
+
+    await flushPromises();
+
+    expect(document.getElementById('authMessage').textContent).toBe('Пароли не совпадают');
+    expect(window.Api.registerUser).not.toHaveBeenCalled();
+  });
+
+  /*
+   * Техника тест-дизайна: тестирование пользовательского сценария.
+   * Проверяем успешную регистрацию пользователя и переход обратно на вкладку входа.
+   */
+  test('bindRegisterForm: при корректных данных вызывает registerUser и переключает на вкладку входа', async () => {
+    const tabLogin = document.getElementById('tab-login');
+    const tabRegister = document.getElementById('tab-register');
+    const loginForm = document.getElementById('loginForm');
+    const registerForm = document.getElementById('registerForm');
+    const registerSubmit = document.getElementById('registerSubmit');
+
+    auth.bindTabs(tabLogin, tabRegister, loginForm, registerForm);
+    auth.bindRegisterForm(registerForm);
+
+    tabRegister.click();
+
+    document.getElementById('regUsername').value = 'test-user';
+    document.getElementById('regEmail').value = ' user@example.com ';
+    document.getElementById('regPassword').value = 'password123';
+    document.getElementById('regConfirm').value = 'password123';
+
+    registerForm.dispatchEvent(
+      new Event('submit', {
+        bubbles: true,
+        cancelable: true
+      })
+    );
+
+    expect(registerSubmit.disabled).toBe(true);
+    expect(document.getElementById('authMessage').textContent).toBe('Отправка регистрации...');
+
+    await flushPromises();
+
+    expect(window.Api.registerUser).toHaveBeenCalledWith({
+      username: 'test-user',
+      email: 'user@example.com',
+      password: 'password123'
+    });
+
+    expect(document.getElementById('authMessage').textContent).toBe(
+      'Регистрация успешна. Пожалуйста, войдите в аккаунт.'
+    );
+
+    expect(registerSubmit.disabled).toBe(false);
+    expect(tabLogin.classList.contains('active')).toBe(true);
+    expect(loginForm.classList.contains('hidden')).toBe(false);
+    expect(registerForm.classList.contains('hidden')).toBe(true);
+  });
+
+  /*
+   * Техника тест-дизайна: негативное тестирование.
+   * Проверяем ошибку регистрации, когда email уже занят.
+   */
+  test('bindRegisterForm: при email_already_exists показывает сообщение об ошибке', async () => {
+    window.Api.registerUser.mockRejectedValueOnce({
+      code: 'email_already_exists'
+    });
+
+    const registerForm = document.getElementById('registerForm');
+
+    auth.bindRegisterForm(registerForm);
+
+    document.getElementById('regUsername').value = 'test-user';
+    document.getElementById('regEmail').value = 'user@example.com';
+    document.getElementById('regPassword').value = 'password123';
+    document.getElementById('regConfirm').value = 'password123';
+
+    registerForm.dispatchEvent(
+      new Event('submit', {
+        bubbles: true,
+        cancelable: true
+      })
+    );
+
+    await flushPromises();
+
+    expect(document.getElementById('authMessage').textContent).toBe(
+      'Указанный email уже занят'
+    );
+    expect(document.getElementById('registerSubmit').disabled).toBe(false);
+  });
+
+  /*
+   * Техника тест-дизайна: негативное тестирование.
+   * Проверяем защитное условие: если формы регистрации нет, функция не падает.
+   */
+  test('bindRegisterForm: если registerForm отсутствует, функция не падает', () => {
+    expect(() => auth.bindRegisterForm(null)).not.toThrow();
+  });
+
+
+  /*
+   * Техника тест-дизайна: тестирование состояний и переходов.
+   * Проверяем ветку, когда пользователь отменяет выход из аккаунта.
+   */
+  test('bindLogoutButton: при отмене подтверждения не вызывает logoutUser', async () => {
+    const logoutBtn = createLogoutButton();
+
+    global.confirm.mockReturnValueOnce(false);
+
+    auth.bindLogoutButton(logoutBtn);
+
+    logoutBtn.click();
+
+    await flushPromises();
+
+    expect(global.confirm).toHaveBeenCalledWith('Выйти из аккаунта?');
+    expect(window.Api.logoutUser).not.toHaveBeenCalled();
+    expect(logoutBtn.disabled).toBe(false);
+  });
+
+  /*
+   * Техника тест-дизайна: негативное тестирование.
+   * Проверяем ошибку выхода из аккаунта.
+   */
+  test('bindLogoutButton: при ошибке logoutUser показывает сообщение ошибки', async () => {
+    const logoutBtn = createLogoutButton();
+
+    global.confirm.mockReturnValueOnce(true);
+
+    window.Api.logoutUser.mockRejectedValueOnce({
+      message: 'Ошибка сервера'
+    });
+
+    auth.bindLogoutButton(logoutBtn);
+
+    logoutBtn.click();
+
+    await flushPromises();
+
+    expect(document.getElementById('authMessage').textContent).toBe('Ошибка сервера');
+    expect(logoutBtn.disabled).toBe(false);
+  });
+
+  /*
+   * Техника тест-дизайна: негативное тестирование.
+   * Проверяем защитное условие: если кнопки выхода нет, функция не падает.
+   */
+  test('bindLogoutButton: если logoutBtn отсутствует, функция не падает', () => {
+    expect(() => auth.bindLogoutButton(null)).not.toThrow();
+  });
+
+  /*
+   * Техника тест-дизайна: тестирование состояний.
+   * Проверяем состояние страницы, если пользователь уже авторизован.
+   */
+  test('checkAlreadyAuthenticated: если пользователь авторизован, показывает блок уже выполненного входа', async () => {
+    window.Api.getMe.mockResolvedValueOnce({
+      authenticated: true,
+      user: {
+        username: 'Slava'
+      }
+    });
+
+    await auth.checkAlreadyAuthenticated();
+
+    expect(document.querySelector('.auth-header').textContent).toBe('Вы уже авторизованы');
+    expect(document.getElementById('authMessage').textContent).toBe(
+      'Вы уже вошли в аккаунт как Slava.'
+    );
+    expect(document.querySelector('.link-as-btn.primary').getAttribute('href')).toBe('/me');
+    expect(document.getElementById('logoutBtn').textContent).toBe('Выйти');
+  });
+
+  /*
+   * Техника тест-дизайна: классы эквивалентности.
+   * Проверяем вариант авторизованного пользователя без username.
+   */
+  test('renderAlreadyAuthenticated: если username отсутствует, показывает общее сообщение', () => {
+    auth.renderAlreadyAuthenticated({});
+
+    expect(document.querySelector('.auth-header').textContent).toBe('Вы уже авторизованы');
+    expect(document.getElementById('authMessage').textContent).toBe(
+      'Вы уже вошли в аккаунт.'
+    );
+  });
+
+  /*
+   * Техника тест-дизайна: негативное тестирование.
+   * Проверяем ошибку проверки авторизации.
+   */
+  test('checkAlreadyAuthenticated: при ошибке getMe пишет предупреждение и не ломает страницу', async () => {
+    window.Api.getMe.mockRejectedValueOnce(new Error('getMe failed'));
+
+    await auth.checkAlreadyAuthenticated();
+
+    expect(console.warn).toHaveBeenCalledWith(
+      'Не удалось проверить авторизацию:',
+      expect.any(Error)
+    );
+
+    expect(document.querySelector('.auth-card')).not.toBe(null);
+  });
+
+  /*
+   * Техника тест-дизайна: негативное тестирование.
+   * Проверяем защитное условие: если auth-card отсутствует, функция не падает.
+   */
+  test('renderAlreadyAuthenticated: если auth-card отсутствует, функция не падает', () => {
+    document.querySelector('.auth-card').remove();
+
+    expect(() => auth.renderAlreadyAuthenticated({ username: 'Slava' })).not.toThrow();
+  });
+
+  /*
+   * Техника тест-дизайна: классы эквивалентности.
+   * Проверяем разные классы ошибок: известный code, message и fallback-сообщение.
+   */
+  test('handleAuthError: выбирает сообщение по code, message или fallback', () => {
+    const message = document.getElementById('authMessage');
+
+    auth.handleAuthError(
+      {
+        code: 'invalid_credentials'
+      },
+      {
+        invalid_credentials: 'Неверный email или пароль'
+      }
+    );
+
+    expect(message.textContent).toBe('Неверный email или пароль');
+
+    auth.handleAuthError(
+      {
+        message: 'Сервер временно недоступен'
+      },
+      {}
+    );
+
+    expect(message.textContent).toBe('Сервер временно недоступен');
+
+    auth.handleAuthError({}, {});
+
+    expect(message.textContent).toBe('Ошибка доступа к серверу. Повторите попытку.');
+  });
 });

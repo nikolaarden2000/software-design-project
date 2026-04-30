@@ -1,4 +1,4 @@
-(function () {
+
   'use strict';
 
   const ROOM_STATUSES = ['draft', 'pending', 'published', 'rejected', 'archived'];
@@ -759,4 +759,39 @@
   function escapeAttr(value) {
     return escapeHtml(value).replaceAll('`', '&#096;');
   }
-})();
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    initAdminPage,
+    showAccessDenied,
+    showContent,
+    routeAdminPage,
+    loadLocations,
+    renderAdminHome,
+    renderLocationPage,
+    loadRoomsForLocation,
+    renderRoomsTable,
+    renderNewRoomPage,
+    renderRoomPage,
+    renderRoomForm,
+    readRoomForm,
+    validateRoomPayload,
+    saveRoomChanges,
+    submitCurrentRoom,
+    loadBookingsForRoom,
+    renderBookingsTable,
+    cancelBooking,
+    renderArchiveBlock,
+    bindArchiveButtons,
+    archiveRoom,
+    bindLogout,
+    renderError,
+    getRoot,
+    getRoomStatusLabel,
+    getBookingStatusLabel,
+    formatDateTime,
+    escapeHtml,
+    escapeAttr,
+    __setCurrentRoomForTests: (room) => { currentRoom = room; },
+__getCurrentRoomForTests: () => currentRoom
+  };
+}

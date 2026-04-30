@@ -1,0 +1,16 @@
+{
+  "name": "superuser-project",
+  "version": "1.0.0",
+  "description": "Project for unit testing",
+  "main": "superuser.js",
+  "scripts": {
+    "test": "jest --coverage"
+  },
+  "jest": {
+    "testEnvironment": "jsdom"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0"
+  }
+}

@@ -1,4 +1,4 @@
-(function () {
+
   'use strict';
 
   let pendingCancelBookingId = null;
@@ -309,4 +309,29 @@
       }
     });
   }
-})();
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    el,
+    initMePage,
+    loadBookings,
+    clearColumns,
+    renderBookings,
+    createCard,
+    openConfirmCancel,
+    closeConfirmCancel,
+    cancelBooking,
+    bindModalEvents,
+    bindLogout,
+
+    __setPendingCancelBookingIdForTests: (value) => { pendingCancelBookingId = value; },
+    __getPendingCancelBookingIdForTests: () => pendingCancelBookingId,
+
+    __setCurrentBookingsForTests: (value) => { currentBookings = value; },
+    __getCurrentBookingsForTests: () => currentBookings,
+
+    __resetStateForTests: () => {
+      pendingCancelBookingId = null;
+      currentBookings = [];
+    }
+  };
+}

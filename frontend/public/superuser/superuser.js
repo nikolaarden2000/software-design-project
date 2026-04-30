@@ -1,4 +1,4 @@
-(function () {
+
   'use strict';
 
   let companies = [];
@@ -407,49 +407,6 @@ function renderAdmins() {
       }
     });
   }
-  function bindAssignLocationsForm() {
-  const form = document.getElementById('assignLocationsForm');
-  if (!form) return;
-
-  form.addEventListener('submit', async (event) => {
-    event.preventDefault();
-
-    const adminId = Number(document.getElementById('assignAdmin').value);
-
-    const selectedLocationIds = Array
-      .from(document.getElementById('assignLocations').selectedOptions)
-      .map(option => Number(option.value))
-      .filter(Boolean);
-
-    if (!adminId) {
-      alert('Выберите администратора');
-      return;
-    }
-
-    if (selectedLocationIds.length === 0) {
-      alert('Выберите хотя бы одну локацию');
-      return;
-    }
-
-    try {
-      await Promise.all(
-        selectedLocationIds.map(locationId =>
-          window.Api.assignAdminToLocation(adminId, locationId)
-        )
-      );
-
-      form.reset();
-
-      await loadAdmins();
-      fillAdminSelect();
-
-      alert('Локации успешно привязаны к администратору');
-    } catch (err) {
-      console.error(err);
-      alert(err?.message || 'Ошибка привязки локаций');
-    }
-  });
-}
 
   async function approveRoom(roomId) {
     try {
@@ -751,4 +708,79 @@ function bindAssignLocationsForm() {
       .replaceAll('"', '&quot;')
       .replaceAll("'", '&#039;');
   }
-})();
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    initSuperuserPage,
+
+    showAccessDenied,
+    showContent,
+
+    loadAllData,
+    loadCompanies,
+    loadLocations,
+    loadAdmins,
+    loadModerationRooms,
+
+    renderLimitedList,
+    renderCompanies,
+    renderLocations,
+    renderAdmins,
+    renderModerationRooms,
+
+    fillCompanySelect,
+    fillAssignmentSelects,
+    fillAdminSelect,
+    fillLocationsMultiSelect,
+
+    bindForms,
+    bindCompanyForm,
+    bindLocationForm,
+    bindAdminForm,
+    bindAssignLocationsForm,
+
+    approveRoom,
+    rejectRoom,
+    bindLogout,
+
+    renderAssignmentLocationRows,
+    removeAssignmentLocation,
+
+    bindLocationPickerModal,
+    openLocationPicker,
+    closeLocationPicker,
+    renderLocationPickerList,
+    selectLocationForAssignment,
+
+    escapeHtml,
+
+    __setCompaniesForTests: (value) => { companies = value; },
+    __getCompaniesForTests: () => companies,
+
+    __setLocationsForTests: (value) => { locations = value; },
+    __getLocationsForTests: () => locations,
+
+    __setAdminsForTests: (value) => { admins = value; },
+    __getAdminsForTests: () => admins,
+
+    __setModerationRoomsForTests: (value) => { moderationRooms = value; },
+    __getModerationRoomsForTests: () => moderationRooms,
+
+    __setSelectedAssignmentLocationIdsForTests: (value) => { selectedAssignmentLocationIds = value; },
+    __getSelectedAssignmentLocationIdsForTests: () => selectedAssignmentLocationIds,
+
+    __setActiveLocationPickerRowIndexForTests: (value) => { activeLocationPickerRowIndex = value; },
+    __getActiveLocationPickerRowIndexForTests: () => activeLocationPickerRowIndex,
+
+    __resetStateForTests: () => {
+      companies = [];
+      locations = [];
+      admins = [];
+      moderationRooms = [];
+      selectedAssignmentLocationIds = [];
+      activeLocationPickerRowIndex = null;
+      expandedLists.companies = false;
+      expandedLists.locations = false;
+      expandedLists.admins = false;
+    }
+  };
+}

@@ -1,5 +1,4 @@
-(function () {
-  'use strict';
+ 'use strict';
 
   let currentRoom = null;
   let currentUser = null;
@@ -738,4 +737,83 @@
       .replaceAll('"', '&quot;')
       .replaceAll("'", '&#039;');
   }
-})();
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    initRoomPage,
+
+    getRoomIdFromUrl,
+    loadCurrentUser,
+    isAuthenticated,
+    updateAuthUi,
+    bindHeaderActions,
+
+    normalizeRoom,
+    renderRoom,
+    renderImages,
+    renderDetails,
+    renderMap,
+    configureBookingButton,
+    showBookHint,
+
+    bindBookingModalActions,
+    openBookingModal,
+    closeBookingModal,
+    resetBookingState,
+    applyAvailability,
+    confirmBooking,
+
+    buildCalendarDays,
+    renderCalendar,
+    renderTimes,
+    onSlotClick,
+    updateSummary,
+
+    renderRoomError,
+    setText,
+    navigate,
+    toNumberOrNull,
+
+    parseTimeToMinutes,
+    nextHourLabel,
+    formatYMD,
+    weekdayRu,
+    formatDayLabel,
+    nextDay,
+    escapeHtml,
+
+    __setCurrentRoomForTests: (value) => { currentRoom = value; },
+    __getCurrentRoomForTests: () => currentRoom,
+
+    __setCurrentUserForTests: (value) => { currentUser = value; },
+    __getCurrentUserForTests: () => currentUser,
+
+    __setMapInstanceForTests: (value) => { mapInstance = value; },
+    __getMapInstanceForTests: () => mapInstance,
+
+    __setServerDatesMapForTests: (value) => { serverDatesMap = value; },
+    __getServerDatesMapForTests: () => serverDatesMap,
+
+    __setAvailableDatesSetForTests: (value) => { availableDatesSet = value; },
+    __getAvailableDatesSetForTests: () => availableDatesSet,
+
+    __setSelectedDateForTests: (value) => { selectedDate = value; },
+    __getSelectedDateForTests: () => selectedDate,
+
+    __setSelectedSlotsForTests: (value) => { selectedSlots = value; },
+    __getSelectedSlotsForTests: () => selectedSlots,
+
+    __setCalendarDaysForTests: (value) => { calendarDays = value; },
+    __getCalendarDaysForTests: () => calendarDays,
+
+    __resetStateForTests: () => {
+      currentRoom = null;
+      currentUser = null;
+      mapInstance = null;
+      serverDatesMap = {};
+      availableDatesSet = new Set();
+      selectedDate = null;
+      selectedSlots = [];
+      calendarDays = [];
+    }
+  };
+}

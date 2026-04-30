@@ -1,4 +1,4 @@
-(function () {
+
   'use strict';
 
   document.addEventListener('DOMContentLoaded', initAuthModule);
@@ -245,4 +245,21 @@
   function isValidEmail(email) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   }
-})();
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    initAuthModule,
+
+    setMessage,
+
+    bindTabs,
+    bindLoginForm,
+    bindRegisterForm,
+    bindLogoutButton,
+
+    checkAlreadyAuthenticated,
+    renderAlreadyAuthenticated,
+
+    handleAuthError,
+    isValidEmail
+  };
+}
