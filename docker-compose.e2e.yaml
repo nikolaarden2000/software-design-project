@@ -1,0 +1,89 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: booking_e2e_db
+      POSTGRES_USER: booking_e2e_user
+      POSTGRES_PASSWORD: booking_e2e_password
+    volumes:
+      - e2e-postgres-data:/var/lib/postgresql/data
+      - ./backend/migrations/001_init.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
+      - ./backend/e2e/002_e2e_seed.sql:/docker-entrypoint-initdb.d/002_e2e_seed.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U booking_e2e_user -d booking_e2e_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgres://booking_e2e_user:booking_e2e_password@postgres:5432/booking_e2e_db?sslmode=disable
+      HTTP_ADDR: :8080
+      COOKIE_NAME: e2e_session_id
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "8080"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    depends_on:
+      - backend
+    ports:
+      - "18081:80"
+
+  e2e-tests:
+    image: mcr.microsoft.com/playwright:v1.49.1-jammy
+    working_dir: /work/frontend/public
+    volumes:
+      - ./:/work
+    environment:
+      E2E_BASE_URL: http://frontend
+
+      E2E_USER_EMAIL: test3@test3.ru
+      E2E_USER_PASSWORD: Password123
+
+      E2E_ADMIN_EMAIL: admin-abc@mail.com
+      E2E_ADMIN_PASSWORD: Password123
+
+      E2E_SUPERUSER_EMAIL: superuser@mail.com
+      E2E_SUPERUSER_PASSWORD: Password123
+
+      E2E_WRONG_PASSWORD: wrong-password
+
+      E2E_LOCATION_ID: "1"
+
+      E2E_CATALOG_ROOM_ID: "1"
+      E2E_BOOKING_ROOM_ID: "2"
+      E2E_CANCEL_BOOKING_ROOM_ID: "3"
+      E2E_DRAFT_ROOM_ID: "4"
+      E2E_PENDING_APPROVE_ROOM_ID: "5"
+      E2E_PENDING_REJECT_ROOM_ID: "6"
+      E2E_ADMIN_BOOKING_ROOM_ID: "7"
+      E2E_ROOM_WITH_FUTURE_BOOKING_ID: "8"
+      E2E_ROOM_WITHOUT_FUTURE_BOOKINGS_ID: "9"
+
+      PUPPETEER_SKIP_DOWNLOAD: "true"
+    depends_on:
+      - frontend
+    command: >
+      sh -c "
+        npm install &&
+        ready=0;
+        for i in $(seq 1 60); do
+          node -e \"fetch(process.env.E2E_BASE_URL).then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\" && ready=1 && break;
+          echo waiting for frontend;
+          sleep 2;
+        done;
+        test \"$ready\" = 1 &&
+        npx playwright test e2e/booking.playwright.spec.js --workers=1 --reporter=list,html
+      "
+
+volumes:
+  e2e-postgres-data:

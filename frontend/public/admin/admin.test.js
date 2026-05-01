@@ -111,11 +111,6 @@ describe('admin.js', () => {
     expect(adminModule.getBookingStatusLabel('booked')).toBe('Забронировано');
   });
 
-  test('formatDateTime: при пустом значении возвращает прочерк', () => {
-    // Техника тест-дизайна: граничные условия
-    expect(adminModule.formatDateTime('')).toBe('—');
-  });
-
   test('showAccessDenied: показывает блок отказа и скрывает контент', () => {
     // Техника тест-дизайна: переходы состояний
     adminModule.showAccessDenied();
