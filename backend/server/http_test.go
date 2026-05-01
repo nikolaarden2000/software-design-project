@@ -66,6 +66,18 @@ type testRoomRepo struct {
 	getRoomsBatchByCity func(ctx context.Context, lastID, limit int, city string) ([]rooms.Room, error)
 	getCompaniesByCity  func(ctx context.Context, city string) ([]string, error)
 	getRoomPageData     func(ctx context.Context, roomID int) (*rooms.RoomPageData, error)
+
+	listAdminRooms   func(ctx context.Context, adminID int, includeAll bool, locationID *int, status *string) ([]rooms.AdminRoomListItem, error)
+	getAdminRoom     func(ctx context.Context, adminID int, includeAll bool, roomID int) (*rooms.AdminRoomDetails, error)
+	createAdminRoom  func(ctx context.Context, creatorID int, includeAll bool, input rooms.AdminRoomInput) (*rooms.AdminRoomListItem, error)
+	updateAdminRoom  func(ctx context.Context, adminID int, includeAll bool, roomID int, input rooms.AdminRoomInput) error
+	submitAdminRoom  func(ctx context.Context, adminID int, includeAll bool, roomID int) error
+	archiveAdminRoom func(ctx context.Context, adminID int, includeAll bool, roomID int, mode string, now time.Time) (*rooms.AdminRoomArchiveResult, error)
+
+	listModerationRooms func(ctx context.Context) ([]rooms.ModerationRoom, error)
+	approveRoom         func(ctx context.Context, roomID int) error
+	rejectRoom          func(ctx context.Context, roomID int, reason string) error
+	archiveRoom         func(ctx context.Context, roomID int) error
 }
 
 func (m *testRoomRepo) GetRoomsBatchByCity(ctx context.Context, lastID, limit int, city string) ([]rooms.Room, error) {
@@ -89,43 +101,73 @@ func (m *testRoomRepo) GetRoomPageData(ctx context.Context, roomID int) (*rooms.
 	return nil, errServerTestNotConfigured
 }
 
-func (m *testRoomRepo) ListAdminRooms(context.Context, int, bool, *int, *string) ([]rooms.AdminRoomListItem, error) {
+func (m *testRoomRepo) ListAdminRooms(ctx context.Context, adminID int, includeAll bool, locationID *int, status *string) ([]rooms.AdminRoomListItem, error) {
+	if m.listAdminRooms != nil {
+		return m.listAdminRooms(ctx, adminID, includeAll, locationID, status)
+	}
 	return nil, errServerTestNotConfigured
 }
 
-func (m *testRoomRepo) GetAdminRoom(context.Context, int, bool, int) (*rooms.AdminRoomDetails, error) {
+func (m *testRoomRepo) GetAdminRoom(ctx context.Context, adminID int, includeAll bool, roomID int) (*rooms.AdminRoomDetails, error) {
+	if m.getAdminRoom != nil {
+		return m.getAdminRoom(ctx, adminID, includeAll, roomID)
+	}
 	return nil, errServerTestNotConfigured
 }
 
-func (m *testRoomRepo) CreateAdminRoom(context.Context, int, bool, rooms.AdminRoomInput) (*rooms.AdminRoomListItem, error) {
+func (m *testRoomRepo) CreateAdminRoom(ctx context.Context, creatorID int, includeAll bool, input rooms.AdminRoomInput) (*rooms.AdminRoomListItem, error) {
+	if m.createAdminRoom != nil {
+		return m.createAdminRoom(ctx, creatorID, includeAll, input)
+	}
 	return nil, errServerTestNotConfigured
 }
 
-func (m *testRoomRepo) UpdateAdminRoom(context.Context, int, bool, int, rooms.AdminRoomInput) error {
+func (m *testRoomRepo) UpdateAdminRoom(ctx context.Context, adminID int, includeAll bool, roomID int, input rooms.AdminRoomInput) error {
+	if m.updateAdminRoom != nil {
+		return m.updateAdminRoom(ctx, adminID, includeAll, roomID, input)
+	}
 	return errServerTestNotConfigured
 }
 
-func (m *testRoomRepo) SubmitAdminRoom(context.Context, int, bool, int) error {
+func (m *testRoomRepo) SubmitAdminRoom(ctx context.Context, adminID int, includeAll bool, roomID int) error {
+	if m.submitAdminRoom != nil {
+		return m.submitAdminRoom(ctx, adminID, includeAll, roomID)
+	}
 	return errServerTestNotConfigured
 }
 
-func (m *testRoomRepo) ArchiveAdminRoom(context.Context, int, bool, int, string, time.Time) (*rooms.AdminRoomArchiveResult, error) {
+func (m *testRoomRepo) ArchiveAdminRoom(ctx context.Context, adminID int, includeAll bool, roomID int, mode string, now time.Time) (*rooms.AdminRoomArchiveResult, error) {
+	if m.archiveAdminRoom != nil {
+		return m.archiveAdminRoom(ctx, adminID, includeAll, roomID, mode, now)
+	}
 	return nil, errServerTestNotConfigured
 }
 
-func (m *testRoomRepo) ListModerationRooms(context.Context) ([]rooms.ModerationRoom, error) {
+func (m *testRoomRepo) ListModerationRooms(ctx context.Context) ([]rooms.ModerationRoom, error) {
+	if m.listModerationRooms != nil {
+		return m.listModerationRooms(ctx)
+	}
 	return nil, errServerTestNotConfigured
 }
 
-func (m *testRoomRepo) ApproveRoom(context.Context, int) error {
+func (m *testRoomRepo) ApproveRoom(ctx context.Context, roomID int) error {
+	if m.approveRoom != nil {
+		return m.approveRoom(ctx, roomID)
+	}
 	return errServerTestNotConfigured
 }
 
-func (m *testRoomRepo) RejectRoom(context.Context, int, string) error {
+func (m *testRoomRepo) RejectRoom(ctx context.Context, roomID int, reason string) error {
+	if m.rejectRoom != nil {
+		return m.rejectRoom(ctx, roomID, reason)
+	}
 	return errServerTestNotConfigured
 }
 
-func (m *testRoomRepo) ArchiveRoom(context.Context, int) error {
+func (m *testRoomRepo) ArchiveRoom(ctx context.Context, roomID int) error {
+	if m.archiveRoom != nil {
+		return m.archiveRoom(ctx, roomID)
+	}
 	return errServerTestNotConfigured
 }
 
@@ -134,6 +176,9 @@ type testBookingRepo struct {
 	createBooking       func(ctx context.Context, userID, roomID int, date string, slots []string, now time.Time) (int, error)
 	getUserBookings     func(ctx context.Context, userID int, now time.Time) ([]bookings.BookingHistoryItem, error)
 	cancelBooking       func(ctx context.Context, bookingID, userID int, now time.Time) error
+
+	listAdminBookings  func(ctx context.Context, adminID int, includeAll bool, locationID *int, roomID *int, status *string, now time.Time) ([]bookings.AdminBookingItem, error)
+	cancelAdminBooking func(ctx context.Context, adminID int, includeAll bool, bookingID int, now time.Time) error
 }
 
 func (m *testBookingRepo) GetRoomAvailability(ctx context.Context, roomID, days int, now time.Time) ([]rooms.DateAvailability, error) {
@@ -164,11 +209,17 @@ func (m *testBookingRepo) CancelBooking(ctx context.Context, bookingID, userID i
 	return errServerTestNotConfigured
 }
 
-func (m *testBookingRepo) ListAdminBookings(context.Context, int, bool, *int, *int, *string, time.Time) ([]bookings.AdminBookingItem, error) {
+func (m *testBookingRepo) ListAdminBookings(ctx context.Context, adminID int, includeAll bool, locationID *int, roomID *int, status *string, now time.Time) ([]bookings.AdminBookingItem, error) {
+	if m.listAdminBookings != nil {
+		return m.listAdminBookings(ctx, adminID, includeAll, locationID, roomID, status, now)
+	}
 	return nil, errServerTestNotConfigured
 }
 
-func (m *testBookingRepo) CancelAdminBooking(context.Context, int, bool, int, time.Time) error {
+func (m *testBookingRepo) CancelAdminBooking(ctx context.Context, adminID int, includeAll bool, bookingID int, now time.Time) error {
+	if m.cancelAdminBooking != nil {
+		return m.cancelAdminBooking(ctx, adminID, includeAll, bookingID, now)
+	}
 	return errServerTestNotConfigured
 }
 
