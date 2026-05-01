@@ -16,7 +16,6 @@ import (
 var errNotConfigured = errors.New("mock: method not configured")
 
 type mockRepo struct {
-	createUser         func(ctx context.Context, username, email, hash string) (int, error)
 	getUserByEmail     func(ctx context.Context, email string) (*users.User, error)
 	createUserWithRole func(ctx context.Context, username, email, hash, role string) (int, error)
 	isEmailTaken       func(ctx context.Context, email string) (bool, error)
@@ -26,13 +25,6 @@ type mockRepo struct {
 func (m *mockRepo) CreateUserWithRole(ctx context.Context, username, email, hash, role string) (int, error) {
 	if m.createUserWithRole != nil {
 		return m.createUserWithRole(ctx, username, email, hash, role)
-	}
-	return 0, errNotConfigured
-}
-
-func (m *mockRepo) CreateUser(ctx context.Context, username, email, hash string) (int, error) {
-	if m.createUser != nil {
-		return m.createUser(ctx, username, email, hash)
 	}
 	return 0, errNotConfigured
 }
@@ -70,10 +62,12 @@ func newTestAuthService(repo UserRepo) *AuthService {
 
 func mustHashPassword(t *testing.T, password string) string {
 	t.Helper()
+
 	h, err := hashPassword(password)
 	if err != nil {
 		t.Fatalf("hashPassword(%q): %v", password, err)
 	}
+
 	return h
 }
 
@@ -83,21 +77,24 @@ func replacePart(hash string, idx int, val string) string {
 	return strings.Join(parts, hashSeparator)
 }
 
-func TestValidatePassword_BVA_Length(t *testing.T) {
+// Техника тест-дизайна: граничные значения.
+// Проверяем значения длины пароля около минимальной и максимальной границы.
+func TestValidatePassword_BoundaryValues_Length(t *testing.T) {
 	cases := []struct {
 		name     string
 		password string
 		wantErr  error
 	}{
-		{"minLen-1 (7 chars)", strings.Repeat("a", minPasswordLen-1), ErrPasswordTooShort},
-		{"minLen (8 chars)", strings.Repeat("a", minPasswordLen), nil},
-		{"maxLen (64 chars)", strings.Repeat("a", maxPasswordLen), nil},
-		{"maxLen+1 (65 chars)", strings.Repeat("a", maxPasswordLen+1), ErrPasswordTooLong},
+		{"minLen-1 is invalid", strings.Repeat("a", minPasswordLen-1), ErrPasswordTooShort},
+		{"minLen is valid", strings.Repeat("a", minPasswordLen), nil},
+		{"maxLen is valid", strings.Repeat("a", maxPasswordLen), nil},
+		{"maxLen+1 is invalid", strings.Repeat("a", maxPasswordLen+1), ErrPasswordTooLong},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			err := validatePassword(tc.password)
+
 			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("got %v, want %v", err, tc.wantErr)
 			}
@@ -105,7 +102,9 @@ func TestValidatePassword_BVA_Length(t *testing.T) {
 	}
 }
 
-func TestValidatePassword_EquivalenceClasses_Characters(t *testing.T) {
+// Техника тест-дизайна: классы эквивалентности.
+// Проверяем классы допустимых и недопустимых символов пароля.
+func TestValidatePassword_CharacterEquivalenceClasses(t *testing.T) {
 	cases := []struct {
 		name    string
 		pass    string
@@ -122,6 +121,7 @@ func TestValidatePassword_EquivalenceClasses_Characters(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			err := validatePassword(tc.pass)
+
 			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("got %v, want %v", err, tc.wantErr)
 			}
@@ -129,7 +129,9 @@ func TestValidatePassword_EquivalenceClasses_Characters(t *testing.T) {
 	}
 }
 
-func TestHashVerify_RoundTrip(t *testing.T) {
+// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
+// Проверяем полный цикл: хеширование пароля и успешная проверка тем же паролем.
+func TestVerifyPassword_Scenario_RoundTrip(t *testing.T) {
 	hash := mustHashPassword(t, "password123")
 
 	ok, err := verifyPassword("password123", hash)
@@ -142,7 +144,9 @@ func TestHashVerify_RoundTrip(t *testing.T) {
 	}
 }
 
-func TestHashVerify_WrongPassword_ReturnsFalse(t *testing.T) {
+// Техника тест-дизайна: классы эквивалентности.
+// Проверяем класс несовпадающего пароля.
+func TestVerifyPassword_EquivalenceClasses_WrongPasswordReturnsFalse(t *testing.T) {
 	hash := mustHashPassword(t, "correct-password")
 
 	ok, err := verifyPassword("wrong-password", hash)
@@ -155,16 +159,20 @@ func TestHashVerify_WrongPassword_ReturnsFalse(t *testing.T) {
 	}
 }
 
-func TestHashPassword_SameInput_ProducesDifferentHashes(t *testing.T) {
+// Техника тест-дизайна: классы эквивалентности.
+// Проверяем, что одинаковый пароль получает разные хеши из-за случайной соли.
+func TestHashPassword_EquivalenceClasses_SameInputProducesDifferentHashes(t *testing.T) {
 	h1 := mustHashPassword(t, "password123")
 	h2 := mustHashPassword(t, "password123")
 
 	if h1 == h2 {
-		t.Error("two hashes of the same password must differ (random salt)")
+		t.Error("two hashes of the same password must differ because salt is random")
 	}
 }
 
-func TestVerifyPassword_InvalidStoredHash_ReturnsError(t *testing.T) {
+// Техника тест-дизайна: классы эквивалентности.
+// Проверяем класс некорректно сохранённого хеша.
+func TestVerifyPassword_EquivalenceClasses_InvalidStoredHashReturnsError(t *testing.T) {
 	_, err := verifyPassword("password", "not-a-valid-hash")
 
 	if err == nil {
@@ -172,6 +180,8 @@ func TestVerifyPassword_InvalidStoredHash_ReturnsError(t *testing.T) {
 	}
 }
 
+// Техника тест-дизайна: таблица решений.
+// Проверяем варианты структуры сохранённого хеша и ожидаемый результат парсинга.
 func TestParseHashString_DecisionTable(t *testing.T) {
 	valid := mustHashPassword(t, "test-password")
 
@@ -181,7 +191,7 @@ func TestParseHashString_DecisionTable(t *testing.T) {
 		wantErr bool
 	}{
 		{"valid hash", valid, false},
-		{"too few parts (3)", "a$b$c", true},
+		{"too few parts", "a$b$c", true},
 		{"unsupported version", replacePart(valid, 0, "99"), true},
 		{"non-numeric version", replacePart(valid, 0, "x"), true},
 		{"non-numeric time", replacePart(valid, 1, "x"), true},
@@ -195,6 +205,7 @@ func TestParseHashString_DecisionTable(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := parseHashString(tc.input)
+
 			if (err != nil) != tc.wantErr {
 				t.Errorf("err=%v, wantErr=%v", err, tc.wantErr)
 			}
@@ -202,7 +213,9 @@ func TestParseHashString_DecisionTable(t *testing.T) {
 	}
 }
 
-func TestRegister_InputValidation_NoDBCalls(t *testing.T) {
+// Техника тест-дизайна: классы эквивалентности.
+// Проверяем классы невалидных входных данных регистрации до обращения к репозиторию.
+func TestRegister_InputValidationEquivalenceClasses_NoDBCalls(t *testing.T) {
 	cases := []struct {
 		name     string
 		username string
@@ -234,9 +247,13 @@ func TestRegister_InputValidation_NoDBCalls(t *testing.T) {
 	}
 }
 
-func TestRegister_EmailAlreadyTaken_ReturnsErrEmailExists(t *testing.T) {
+// Техника тест-дизайна: таблица решений.
+// Проверяем ветку регистрации, когда email уже занят.
+func TestRegister_DecisionTable_EmailAlreadyTakenReturnsErrEmailExists(t *testing.T) {
 	repo := &mockRepo{
-		isEmailTaken: func(_ context.Context, _ string) (bool, error) { return true, nil },
+		isEmailTaken: func(_ context.Context, _ string) (bool, error) {
+			return true, nil
+		},
 	}
 	svc := newTestAuthService(repo)
 
@@ -247,10 +264,14 @@ func TestRegister_EmailAlreadyTaken_ReturnsErrEmailExists(t *testing.T) {
 	}
 }
 
-func TestRegister_DBErrorOnIsEmailTaken_PropagatesError(t *testing.T) {
+// Техника тест-дизайна: обработка исключений.
+// Проверяем, что ошибка проверки уникальности email возвращается вызывающему коду.
+func TestRegister_ExceptionHandling_IsEmailTakenErrorPropagates(t *testing.T) {
 	dbErr := fmt.Errorf("connection lost")
 	repo := &mockRepo{
-		isEmailTaken: func(_ context.Context, _ string) (bool, error) { return false, dbErr },
+		isEmailTaken: func(_ context.Context, _ string) (bool, error) {
+			return false, dbErr
+		},
 	}
 	svc := newTestAuthService(repo)
 
@@ -261,7 +282,147 @@ func TestRegister_DBErrorOnIsEmailTaken_PropagatesError(t *testing.T) {
 	}
 }
 
-func TestLogin_InputValidation_NoDBCalls(t *testing.T) {
+// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
+// Проверяем, что Register создаёт пользователя с ролью user по умолчанию.
+func TestRegister_Scenario_UsesDefaultUserRole(t *testing.T) {
+	repo := &mockRepo{
+		isEmailTaken: func(_ context.Context, email string) (bool, error) {
+			if email != "alice@example.com" {
+				t.Fatalf("email: got %q, want alice@example.com", email)
+			}
+			return false, nil
+		},
+		createUserWithRole: func(_ context.Context, username, email, hash, role string) (int, error) {
+			if username != "alice" {
+				t.Fatalf("username: got %q, want alice", username)
+			}
+			if email != "alice@example.com" {
+				t.Fatalf("email: got %q, want alice@example.com", email)
+			}
+			if role != users.RoleUser {
+				t.Fatalf("role: got %q, want %q", role, users.RoleUser)
+			}
+
+			ok, err := verifyPassword("password1", hash)
+			if err != nil {
+				t.Fatalf("verifyPassword returned error: %v", err)
+			}
+			if !ok {
+				t.Fatal("password hash does not match original password")
+			}
+
+			return 42, nil
+		},
+	}
+
+	svc := newTestAuthService(repo)
+
+	id, err := svc.Register(context.Background(), " alice ", " alice@example.com ", "password1")
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if id != 42 {
+		t.Fatalf("id: got %d, want 42", id)
+	}
+}
+
+// Техника тест-дизайна: классы эквивалентности.
+// Проверяем допустимые роли как класс валидных значений.
+func TestRegisterWithRole_RoleEquivalenceClasses_ValidRoles(t *testing.T) {
+	cases := []struct {
+		name string
+		role string
+	}{
+		{"user role", users.RoleUser},
+		{"admin role", users.RoleAdmin},
+		{"superuser role", users.RoleSuperuser},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := &mockRepo{
+				isEmailTaken: func(_ context.Context, _ string) (bool, error) {
+					return false, nil
+				},
+				createUserWithRole: func(_ context.Context, username, email, hash, role string) (int, error) {
+					if username != "alice" {
+						t.Fatalf("username: got %q, want alice", username)
+					}
+					if email != "alice@example.com" {
+						t.Fatalf("email: got %q, want alice@example.com", email)
+					}
+					if role != tc.role {
+						t.Fatalf("role: got %q, want %q", role, tc.role)
+					}
+
+					ok, err := verifyPassword("password1", hash)
+					if err != nil {
+						t.Fatalf("verifyPassword returned error: %v", err)
+					}
+					if !ok {
+						t.Fatal("password hash does not match original password")
+					}
+
+					return 100, nil
+				},
+			}
+
+			svc := newTestAuthService(repo)
+
+			id, err := svc.RegisterWithRole(context.Background(), "alice", "alice@example.com", "password1", tc.role)
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if id != 100 {
+				t.Fatalf("id: got %d, want 100", id)
+			}
+		})
+	}
+}
+
+// Техника тест-дизайна: классы эквивалентности.
+// Проверяем класс невалидных ролей, которые отклоняются до обращения к репозиторию.
+func TestRegisterWithRole_RoleEquivalenceClasses_InvalidRole(t *testing.T) {
+	svc := newTestAuthService(&mockRepo{})
+
+	_, err := svc.RegisterWithRole(context.Background(), "alice", "alice@example.com", "password1", "moderator")
+
+	if err == nil {
+		t.Fatal("expected error for invalid role, got nil")
+	}
+	if !strings.Contains(err.Error(), "invalid role") {
+		t.Fatalf("expected invalid role error, got %v", err)
+	}
+}
+
+// Техника тест-дизайна: обработка исключений.
+// Проверяем, что ошибка CreateUserWithRole возвращается вызывающему коду.
+func TestRegisterWithRole_ExceptionHandling_CreateUserWithRoleErrorPropagates(t *testing.T) {
+	createErr := fmt.Errorf("insert failed")
+
+	repo := &mockRepo{
+		isEmailTaken: func(_ context.Context, _ string) (bool, error) {
+			return false, nil
+		},
+		createUserWithRole: func(_ context.Context, _, _, _, _ string) (int, error) {
+			return 0, createErr
+		},
+	}
+
+	svc := newTestAuthService(repo)
+
+	_, err := svc.RegisterWithRole(context.Background(), "alice", "alice@example.com", "password1", users.RoleAdmin)
+
+	if !errors.Is(err, createErr) {
+		t.Fatalf("got error %v, want wrapped %v", err, createErr)
+	}
+}
+
+// Техника тест-дизайна: классы эквивалентности.
+// Проверяем классы невалидных входных данных входа до обращения к репозиторию.
+func TestLogin_InputValidationEquivalenceClasses_NoDBCalls(t *testing.T) {
 	cases := []struct {
 		name     string
 		email    string
@@ -287,7 +448,9 @@ func TestLogin_InputValidation_NoDBCalls(t *testing.T) {
 	}
 }
 
-func TestLogin_UserNotFound_PropagatesError(t *testing.T) {
+// Техника тест-дизайна: обработка исключений.
+// Проверяем, что ошибка поиска пользователя возвращается вызывающему коду.
+func TestLogin_ExceptionHandling_UserLookupErrorPropagates(t *testing.T) {
 	dbErr := fmt.Errorf("user not found")
 	repo := &mockRepo{
 		getUserByEmail: func(_ context.Context, _ string) (*users.User, error) {
@@ -303,7 +466,9 @@ func TestLogin_UserNotFound_PropagatesError(t *testing.T) {
 	}
 }
 
-func TestLogin_WrongPassword_ReturnsErrInvalidCredentials(t *testing.T) {
+// Техника тест-дизайна: классы эквивалентности.
+// Проверяем класс неверного пароля.
+func TestLogin_EquivalenceClasses_WrongPasswordReturnsInvalidCredentials(t *testing.T) {
 	correctHash := mustHashPassword(t, "correct-password")
 	repo := &mockRepo{
 		getUserByEmail: func(_ context.Context, email string) (*users.User, error) {
@@ -319,7 +484,9 @@ func TestLogin_WrongPassword_ReturnsErrInvalidCredentials(t *testing.T) {
 	}
 }
 
-func TestLogin_CorruptedStoredHash_ReturnsError(t *testing.T) {
+// Техника тест-дизайна: обработка исключений.
+// Проверяем поведение при повреждённом сохранённом хеше.
+func TestLogin_ExceptionHandling_CorruptedStoredHashReturnsError(t *testing.T) {
 	repo := &mockRepo{
 		getUserByEmail: func(_ context.Context, email string) (*users.User, error) {
 			return &users.User{ID: 1, Email: email, Password: "corrupted-hash"}, nil
@@ -334,7 +501,9 @@ func TestLogin_CorruptedStoredHash_ReturnsError(t *testing.T) {
 	}
 }
 
-func TestLogin_Success_ReturnsUserAndSetsCookie(t *testing.T) {
+// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
+// Проверяем успешный вход, возврат пользователя, cookie и создание сессии.
+func TestLogin_Scenario_ReturnsUserAndSetsCookie(t *testing.T) {
 	correctHash := mustHashPassword(t, "password1")
 	repo := &mockRepo{
 		getUserByEmail: func(_ context.Context, email string) (*users.User, error) {
@@ -343,7 +512,7 @@ func TestLogin_Success_ReturnsUserAndSetsCookie(t *testing.T) {
 				Username: "alice",
 				Email:    email,
 				Password: correctHash,
-				Role:     "user",
+				Role:     users.RoleUser,
 			}, nil
 		},
 	}
@@ -367,8 +536,8 @@ func TestLogin_Success_ReturnsUserAndSetsCookie(t *testing.T) {
 	if u.Username != "alice" {
 		t.Errorf("username: got %q, want alice", u.Username)
 	}
-	if u.Role != "user" {
-		t.Errorf("role: got %q, want user", u.Role)
+	if u.Role != users.RoleUser {
+		t.Errorf("role: got %q, want %q", u.Role, users.RoleUser)
 	}
 
 	cookies := w.Result().Cookies()
@@ -396,7 +565,9 @@ func TestLogin_Success_ReturnsUserAndSetsCookie(t *testing.T) {
 	}
 }
 
-func TestLogout_WithCookie_DeletesSessionAndClearsCookie(t *testing.T) {
+// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
+// Проверяем выход пользователя при наличии cookie.
+func TestLogout_Scenario_WithCookieDeletesSessionAndClearsCookie(t *testing.T) {
 	svc := newTestAuthService(&mockRepo{})
 	sessionID, _ := svc.sessionMgr.Create(1)
 
@@ -415,6 +586,7 @@ func TestLogout_WithCookie_DeletesSessionAndClearsCookie(t *testing.T) {
 	if len(cookies) != 1 {
 		t.Fatalf("expected 1 Set-Cookie header, got %d", len(cookies))
 	}
+
 	c := cookies[0]
 	if c.MaxAge != -1 {
 		t.Errorf("cookie MaxAge: got %d, want -1", c.MaxAge)
@@ -424,7 +596,9 @@ func TestLogout_WithCookie_DeletesSessionAndClearsCookie(t *testing.T) {
 	}
 }
 
-func TestLogout_WithoutCookie_DoesNotPanicAndClearsCookie(t *testing.T) {
+// Техника тест-дизайна: классы эквивалентности.
+// Проверяем выход без входящей cookie.
+func TestLogout_EquivalenceClasses_WithoutCookieClearsCookie(t *testing.T) {
 	svc := newTestAuthService(&mockRepo{})
 	req := httptest.NewRequest(http.MethodPost, "/logout", nil)
 	w := httptest.NewRecorder()
@@ -437,6 +611,8 @@ func TestLogout_WithoutCookie_DoesNotPanicAndClearsCookie(t *testing.T) {
 	}
 }
 
+// Техника тест-дизайна: таблица решений.
+// Проверяем результат VerifyRequest в зависимости от наличия cookie и состояния сессии.
 func TestVerifyRequest_DecisionTable(t *testing.T) {
 	svc := newTestAuthService(&mockRepo{})
 	validID, _ := svc.sessionMgr.Create(99)
@@ -468,7 +644,9 @@ func TestVerifyRequest_DecisionTable(t *testing.T) {
 	}
 }
 
-func TestOptionalUserMiddleware_AuthenticatedRequest_InjectsUserIntoContext(t *testing.T) {
+// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
+// Проверяем, что OptionalUserMiddleware кладёт user id и user в контекст.
+func TestOptionalUserMiddleware_Scenario_AuthenticatedRequestInjectsUserIntoContext(t *testing.T) {
 	repo := &mockRepo{
 		getUserByID: func(_ context.Context, id int) (*users.User, error) {
 			if id != 42 {
@@ -519,7 +697,9 @@ func TestOptionalUserMiddleware_AuthenticatedRequest_InjectsUserIntoContext(t *t
 	}
 }
 
-func TestOptionalUserMiddleware_UnauthenticatedRequest_CallsNextWithoutUser(t *testing.T) {
+// Техника тест-дизайна: классы эквивалентности.
+// Проверяем запрос без авторизации.
+func TestOptionalUserMiddleware_EquivalenceClasses_UnauthenticatedRequestCallsNextWithoutUser(t *testing.T) {
 	svc := newTestAuthService(&mockRepo{})
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
@@ -548,7 +728,9 @@ func TestOptionalUserMiddleware_UnauthenticatedRequest_CallsNextWithoutUser(t *t
 	}
 }
 
-func TestRequireAuth_UnauthenticatedRequest_ReturnsUnauthorized(t *testing.T) {
+// Техника тест-дизайна: классы эквивалентности.
+// Проверяем неавторизованный запрос к RequireAuth.
+func TestRequireAuth_EquivalenceClasses_UnauthenticatedRequestReturnsUnauthorized(t *testing.T) {
 	svc := newTestAuthService(&mockRepo{})
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
@@ -569,7 +751,9 @@ func TestRequireAuth_UnauthenticatedRequest_ReturnsUnauthorized(t *testing.T) {
 	}
 }
 
-func TestRequireRole_ForWrongRole_ReturnsForbidden(t *testing.T) {
+// Техника тест-дизайна: таблица решений.
+// Проверяем запрос с ролью, которой нет в списке разрешённых.
+func TestRequireRole_DecisionTable_WrongRoleReturnsForbidden(t *testing.T) {
 	repo := &mockRepo{
 		getUserByID: func(_ context.Context, id int) (*users.User, error) {
 			return &users.User{
@@ -604,6 +788,50 @@ func TestRequireRole_ForWrongRole_ReturnsForbidden(t *testing.T) {
 	}
 }
 
+// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
+// Проверяем, что пользователь с разрешённой ролью проходит RequireRole.
+func TestRequireRole_Scenario_AllowedRoleCallsNext(t *testing.T) {
+	repo := &mockRepo{
+		getUserByID: func(_ context.Context, id int) (*users.User, error) {
+			if id != 42 {
+				t.Fatalf("GetUserByID id: got %d, want 42", id)
+			}
+
+			return &users.User{
+				ID:       42,
+				Username: "admin",
+				Email:    "admin@example.com",
+				Role:     users.RoleAdmin,
+			}, nil
+		},
+	}
+
+	svc := newTestAuthService(repo)
+	sessionID, _ := svc.sessionMgr.Create(42)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(&http.Cookie{Name: "session_id", Value: sessionID})
+	w := httptest.NewRecorder()
+
+	nextCalled := false
+	next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		nextCalled = true
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	svc.RequireRole(users.RoleAdmin, users.RoleSuperuser)(next).ServeHTTP(w, req)
+
+	if !nextCalled {
+		t.Fatal("next handler must be called for allowed role")
+	}
+
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("status: got %d, want %d", w.Code, http.StatusNoContent)
+	}
+}
+
+// Техника тест-дизайна: классы эквивалентности.
+// Проверяем три класса контекста: корректный user id, отсутствие значения, значение неправильного типа.
 func TestUserIDFromContext_EquivalenceClasses(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -612,25 +840,29 @@ func TestUserIDFromContext_EquivalenceClasses(t *testing.T) {
 		wantOK bool
 	}{
 		{
-			"with valid int value",
-			context.WithValue(context.Background(), KeyUserID, 42),
-			42, true,
+			name:   "with valid int value",
+			ctx:    context.WithValue(context.Background(), KeyUserID, 42),
+			wantID: 42,
+			wantOK: true,
 		},
 		{
-			"without value",
-			context.Background(),
-			0, false,
+			name:   "without value",
+			ctx:    context.Background(),
+			wantID: 0,
+			wantOK: false,
 		},
 		{
-			"with wrong type value",
-			context.WithValue(context.Background(), KeyUserID, "not-an-int"),
-			0, false,
+			name:   "with wrong type value",
+			ctx:    context.WithValue(context.Background(), KeyUserID, "not-an-int"),
+			wantID: 0,
+			wantOK: false,
 		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			id, ok := UserIDFromContext(tc.ctx)
+
 			if id != tc.wantID || ok != tc.wantOK {
 				t.Errorf("got (%d, %v), want (%d, %v)", id, ok, tc.wantID, tc.wantOK)
 			}
@@ -638,10 +870,66 @@ func TestUserIDFromContext_EquivalenceClasses(t *testing.T) {
 	}
 }
 
-func TestGetUserByID_DelegatesSuccessToRepo(t *testing.T) {
+// Техника тест-дизайна: классы эквивалентности.
+// Проверяем три класса контекста: пользователь есть, значения нет, значение неправильного типа.
+func TestUserFromContext_EquivalenceClasses(t *testing.T) {
+	wantUser := &users.User{
+		ID:       7,
+		Username: "alice",
+		Email:    "alice@example.com",
+		Role:     users.RoleUser,
+	}
+
+	cases := []struct {
+		name   string
+		ctx    context.Context
+		want   *users.User
+		wantOK bool
+	}{
+		{
+			name:   "with valid user value",
+			ctx:    context.WithValue(context.Background(), KeyUser, wantUser),
+			want:   wantUser,
+			wantOK: true,
+		},
+		{
+			name:   "without value",
+			ctx:    context.Background(),
+			want:   nil,
+			wantOK: false,
+		},
+		{
+			name:   "with wrong type value",
+			ctx:    context.WithValue(context.Background(), KeyUser, "not-a-user"),
+			want:   nil,
+			wantOK: false,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, ok := UserFromContext(tc.ctx)
+
+			if ok != tc.wantOK {
+				t.Fatalf("ok: got %v, want %v", ok, tc.wantOK)
+			}
+
+			if got != tc.want {
+				t.Fatalf("user: got %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
+// Проверяем, что AuthService делегирует успешный GetUserByID репозиторию.
+func TestGetUserByID_Scenario_DelegatesSuccessToRepo(t *testing.T) {
 	want := &users.User{ID: 5, Username: "alice", Email: "a@b.com"}
 	repo := &mockRepo{
 		getUserByID: func(_ context.Context, id int) (*users.User, error) {
+			if id != 5 {
+				t.Fatalf("id: got %d, want 5", id)
+			}
 			return want, nil
 		},
 	}
@@ -654,10 +942,12 @@ func TestGetUserByID_DelegatesSuccessToRepo(t *testing.T) {
 	}
 }
 
-func TestGetUserByID_DelegatesErrorToRepo(t *testing.T) {
+// Техника тест-дизайна: обработка исключений.
+// Проверяем, что ошибка GetUserByID из репозитория не теряется.
+func TestGetUserByID_ExceptionHandling_DelegatesErrorToRepo(t *testing.T) {
 	dbErr := fmt.Errorf("not found")
 	repo := &mockRepo{
-		getUserByID: func(_ context.Context, id int) (*users.User, error) {
+		getUserByID: func(_ context.Context, _ int) (*users.User, error) {
 			return nil, dbErr
 		},
 	}
@@ -670,4 +960,6 @@ func TestGetUserByID_DelegatesErrorToRepo(t *testing.T) {
 	}
 }
 
-func strPtr(s string) *string { return &s }
+func strPtr(s string) *string {
+	return &s
+}
