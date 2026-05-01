@@ -155,6 +155,10 @@ function findBookedCard(page, booking) {
     .first();
 }
 
+function moderationRoomCard(page, roomId) {
+  return page.locator(`article.room-card[data-room-id="${roomId}"]`);
+}
+
 test.beforeEach(async ({ page }) => {
   await setupDialogs(page);
 });
@@ -344,7 +348,7 @@ test('E2E-11. Суперпользователь одобряет помещен
 
   await gotoApp(page, '/superuser');
 
-  const roomCard = page.locator(`[data-room-id="${DATA.pendingApproveRoomId}"]`);
+  const roomCard = moderationRoomCard(page, DATA.pendingApproveRoomId);
 
   await expect(roomCard).toBeVisible();
 
@@ -368,7 +372,7 @@ test('E2E-12. Суперпользователь отклоняет помеще
 
   await gotoApp(superPage, '/superuser');
 
-  const roomCard = superPage.locator(`[data-room-id="${DATA.pendingRejectRoomId}"]`);
+  const roomCard = moderationRoomCard(superPage, DATA.pendingRejectRoomId);
 
   await expect(roomCard).toBeVisible();
 

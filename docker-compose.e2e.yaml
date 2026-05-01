@@ -39,10 +39,11 @@ services:
       - "18081:80"
 
   e2e-tests:
-    image: mcr.microsoft.com/playwright:v1.49.1-jammy
+    image: mcr.microsoft.com/playwright:v1.59.1-jammy
     working_dir: /work/frontend/public
     volumes:
       - ./:/work
+      - e2e-node-modules:/work/frontend/public/node_modules
     environment:
       E2E_BASE_URL: http://frontend
 
@@ -72,18 +73,23 @@ services:
       PUPPETEER_SKIP_DOWNLOAD: "true"
     depends_on:
       - frontend
-    command: >
-      sh -c "
-        npm install &&
-        ready=0;
-        for i in $(seq 1 60); do
-          node -e \"fetch(process.env.E2E_BASE_URL).then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\" && ready=1 && break;
-          echo waiting for frontend;
-          sleep 2;
-        done;
-        test \"$ready\" = 1 &&
+    command:
+      - sh
+      - -c
+      - |
+        npm install --no-package-lock --no-audit --no-fund
+
+        ready=0
+        for i in $$(seq 1 60); do
+          node -e "fetch(process.env.E2E_BASE_URL).then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))" && ready=1 && break
+          echo waiting for frontend
+          sleep 2
+        done
+
+        test "$$ready" = 1
+
         npx playwright test e2e/booking.playwright.spec.js --workers=1 --reporter=list,html
-      "
 
 volumes:
   e2e-postgres-data:
+  e2e-node-modules:
