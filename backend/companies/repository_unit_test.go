@@ -37,9 +37,9 @@ func companyColumns() []string {
 	return []string{"id", "name", "description", "locations_count"}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем успешное получение списка компаний вместе с количеством локаций.
-func TestListCompanies_Scenario_Success(t *testing.T) {
+// Техника тест-дизайна: Сценарное тестирование (Use Case Testing).
+// Проверяем позитивный сценарий: успешное получение списка компаний вместе с количеством локаций.
+func TestListCompanies_UseCase_Success(t *testing.T) {
 	mock := newCompaniesMock(t)
 	repo := newCompaniesRepo(mock)
 
@@ -68,9 +68,9 @@ func TestListCompanies_Scenario_Success(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем класс пустого результата: компаний нет, но возвращается не nil slice.
-func TestListCompanies_EquivalenceClasses_EmptyResultReturnsEmptySlice(t *testing.T) {
+// Техника тест-дизайна: Эквивалентное разбиение (Equivalence Partitioning).
+// Проверяем класс пустого результата: компаний нет, возвращается не nil, а пустой slice.
+func TestListCompanies_EquivalencePartitioning_EmptyResult(t *testing.T) {
 	mock := newCompaniesMock(t)
 	repo := newCompaniesRepo(mock)
 
@@ -90,9 +90,9 @@ func TestListCompanies_EquivalenceClasses_EmptyResultReturnsEmptySlice(t *testin
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
-// Проверяем, что ошибка запроса списка компаний возвращается вызывающему коду.
-func TestListCompanies_ExceptionHandling_QueryErrorPropagates(t *testing.T) {
+// Техника тест-дизайна: Предугадывание ошибок (Error Guessing).
+// Проверяем, что ошибка запроса к БД корректно пробрасывается вызывающему коду.
+func TestListCompanies_ErrorGuessing_QueryError(t *testing.T) {
 	mock := newCompaniesMock(t)
 	repo := newCompaniesRepo(mock)
 
@@ -107,9 +107,9 @@ func TestListCompanies_ExceptionHandling_QueryErrorPropagates(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
-// Проверяем, что ошибка сканирования строки возвращается вызывающему коду.
-func TestListCompanies_ExceptionHandling_ScanErrorPropagates(t *testing.T) {
+// Техника тест-дизайна: Предугадывание ошибок (Error Guessing).
+// Проверяем реакцию системы на ошибку сканирования строки (несовпадение типов).
+func TestListCompanies_ErrorGuessing_ScanError(t *testing.T) {
 	mock := newCompaniesMock(t)
 	repo := newCompaniesRepo(mock)
 
@@ -126,35 +126,52 @@ func TestListCompanies_ExceptionHandling_ScanErrorPropagates(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем успешное создание компании с нормализацией пробелов в name и description.
-func TestCreateCompany_Scenario_SuccessTrimsInput(t *testing.T) {
-	mock := newCompaniesMock(t)
-	repo := newCompaniesRepo(mock)
-
-	mock.ExpectQuery(regexp.QuoteMeta(queryCreateCompany)).
-		WithArgs("Company A", "Description A").
-		WillReturnRows(
-			pgxmock.NewRows(companyColumns()).
-				AddRow(10, "Company A", "Description A", 0),
-		)
-
-	company, err := repo.CreateCompany(context.Background(), "  Company A  ", "  Description A  ")
-
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+// Техника тест-дизайна: Эквивалентное разбиение (Equivalence Partitioning).
+// Объединенный тест валидных классов: нормальное заполнение полей (с обрезкой пробелов)
+// и создание с разрешенным пустым описанием.
+func TestCreateCompany_EquivalencePartitioning_Success(t *testing.T) {
+	cases := []struct {
+		name       string
+		inName     string
+		inDesc     string
+		expectName string
+		expectDesc string
+		mockID     int
+	}{
+		{"success with spaces trimming", "  Company A  ", "  Description A  ", "Company A", "Description A", 10},
+		{"success with empty description allowed", "Company B", "   ", "Company B", "", 11},
 	}
-	if company == nil {
-		t.Fatal("got nil company")
-	}
-	if company.ID != 10 || company.Name != "Company A" || company.Description != "Description A" || company.LocationsCount != 0 {
-		t.Fatalf("unexpected company: %+v", company)
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			mock := newCompaniesMock(t)
+			repo := newCompaniesRepo(mock)
+
+			mock.ExpectQuery(regexp.QuoteMeta(queryCreateCompany)).
+				WithArgs(tc.expectName, tc.expectDesc).
+				WillReturnRows(
+					pgxmock.NewRows(companyColumns()).
+						AddRow(tc.mockID, tc.expectName, tc.expectDesc, 0),
+				)
+
+			company, err := repo.CreateCompany(context.Background(), tc.inName, tc.inDesc)
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if company == nil {
+				t.Fatal("got nil company")
+			}
+			if company.ID != tc.mockID || company.Name != tc.expectName || company.Description != tc.expectDesc || company.LocationsCount != 0 {
+				t.Fatalf("unexpected company: %+v", company)
+			}
+		})
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем класс невалидных названий компании: пустая строка и строка из пробелов.
-func TestCreateCompany_EquivalenceClasses_EmptyNameReturnsErrInvalidArgument(t *testing.T) {
+// Техника тест-дизайна: Эквивалентное разбиение (Equivalence Partitioning).
+// Проверяем класс невалидных названий компании: полностью пустая строка и строка из пробелов.
+func TestCreateCompany_EquivalencePartitioning_EmptyName(t *testing.T) {
 	cases := []struct {
 		name        string
 		companyName string
@@ -177,32 +194,9 @@ func TestCreateCompany_EquivalenceClasses_EmptyNameReturnsErrInvalidArgument(t *
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем допустимый класс пустого описания: description может быть пустым.
-func TestCreateCompany_EquivalenceClasses_EmptyDescriptionIsAllowed(t *testing.T) {
-	mock := newCompaniesMock(t)
-	repo := newCompaniesRepo(mock)
-
-	mock.ExpectQuery(regexp.QuoteMeta(queryCreateCompany)).
-		WithArgs("Company A", "").
-		WillReturnRows(
-			pgxmock.NewRows(companyColumns()).
-				AddRow(10, "Company A", "", 0),
-		)
-
-	company, err := repo.CreateCompany(context.Background(), "Company A", "   ")
-
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if company.Description != "" {
-		t.Fatalf("description: got %q, want empty string", company.Description)
-	}
-}
-
-// Техника тест-дизайна: таблица решений.
-// Проверяем преобразование PostgreSQL unique violation в доменную ошибку конфликта.
-func TestCreateCompany_DecisionTable_UniqueViolationReturnsErrConflict(t *testing.T) {
+// Техника тест-дизайна: Предугадывание ошибок (Error Guessing).
+// Проверяем преобразование специфичной ошибки PostgreSQL (unique violation) в доменную.
+func TestCreateCompany_ErrorGuessing_UniqueViolation(t *testing.T) {
 	mock := newCompaniesMock(t)
 	repo := newCompaniesRepo(mock)
 
@@ -217,9 +211,9 @@ func TestCreateCompany_DecisionTable_UniqueViolationReturnsErrConflict(t *testin
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
-// Проверяем, что обычная ошибка базы данных при создании компании возвращается вызывающему коду.
-func TestCreateCompany_ExceptionHandling_DBErrorPropagates(t *testing.T) {
+// Техника тест-дизайна: Предугадывание ошибок (Error Guessing).
+// Проверяем, что общая ошибка БД при создании пробрасывается корректно.
+func TestCreateCompany_ErrorGuessing_DBError(t *testing.T) {
 	mock := newCompaniesMock(t)
 	repo := newCompaniesRepo(mock)
 
@@ -235,9 +229,9 @@ func TestCreateCompany_ExceptionHandling_DBErrorPropagates(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: граничные значения.
-// Проверяем недопустимые значения id около нижней границы.
-func TestExistsByID_BoundaryValues_InvalidIDsReturnErrInvalidID(t *testing.T) {
+// Техника тест-дизайна: Анализ граничных значений (Boundary Value Analysis).
+// Проверяем недопустимые значения id: граница невалидных значений (0) и ниже (-1).
+func TestExistsByID_BoundaryValueAnalysis_InvalidIDs(t *testing.T) {
 	cases := []struct {
 		name string
 		id   int
@@ -263,9 +257,9 @@ func TestExistsByID_BoundaryValues_InvalidIDsReturnErrInvalidID(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: таблица решений.
-// Проверяем результат ExistsByID в зависимости от значения SELECT EXISTS.
-func TestExistsByID_DecisionTable(t *testing.T) {
+// Техника тест-дизайна: Эквивалентное разбиение (Equivalence Partitioning).
+// Проверяем два валидных класса: компания существует и компания не существует.
+func TestExistsByID_EquivalencePartitioning_ValidIDs(t *testing.T) {
 	cases := []struct {
 		name     string
 		dbResult bool
@@ -296,9 +290,9 @@ func TestExistsByID_DecisionTable(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
-// Проверяем, что ошибка базы данных при проверке существования компании возвращается вызывающему коду.
-func TestExistsByID_ExceptionHandling_DBErrorPropagates(t *testing.T) {
+// Техника тест-дизайна: Предугадывание ошибок (Error Guessing).
+// Проверяем, что ошибка БД при запросе существования возвращается вызывающему коду.
+func TestExistsByID_ErrorGuessing_DBError(t *testing.T) {
 	mock := newCompaniesMock(t)
 	repo := newCompaniesRepo(mock)
 

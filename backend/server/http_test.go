@@ -748,9 +748,10 @@ func TestRoomAvailabilityHandler_BoundaryValues_DaysIsCappedTo31(t *testing.T) {
 			if days != 31 {
 				t.Fatalf("days: got %d, want 31", days)
 			}
-			return []rooms.DateAvailability{{Date: "2024-01-15", AvailableTimes: []string{"10:00"}}}, nil
+			return []rooms.DateAvailability{}, nil
 		},
 	}
+
 	s := newHTTPHandlersTestServer(nil, nil, bookingRepo)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/rooms/10/availability?days=100", nil)

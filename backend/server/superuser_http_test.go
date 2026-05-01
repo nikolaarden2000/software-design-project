@@ -172,9 +172,9 @@ func TestCreateCompanyHandler_DecisionTable_RepoErrors(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем получение списка локаций с фильтрами.
-func TestListLocationsHandler_Scenario_SuccessWithFilters(t *testing.T) {
+// Техника тест-дизайна: классы эквивалентности.
+// Проверяем класс запроса списка локаций с фильтрами company_id и city.
+func TestListLocationsHandler_EquivalenceClasses_SuccessWithFilters(t *testing.T) {
 	locationRepo := &testLocationRepo{
 		listLocations: func(_ context.Context, companyID *int, city *string) ([]locations.Location, error) {
 			if companyID == nil || *companyID != 10 {

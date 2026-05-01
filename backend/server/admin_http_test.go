@@ -98,64 +98,43 @@ func validAdminRoomJSON() string {
 	}`
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем получение локаций обычным администратором.
-func TestAdminLocationsHandler_Scenario_AdminSuccess(t *testing.T) {
-	locationRepo := &testLocationRepo{
-		listAdminLocations: func(_ context.Context, adminID int, includeAll bool) ([]locations.AdminLocation, error) {
-			if adminID != 7 {
-				t.Fatalf("adminID: got %d, want 7", adminID)
+// Техника тест-дизайна: таблица решений.
+// Проверяем параметры доступа к admin-локациям в зависимости от роли пользователя.
+func TestAdminLocationsHandler_DecisionTable_RoleAccess(t *testing.T) {
+	cases := []struct {
+		name           string
+		user           *users.User
+		wantAdminID    int
+		wantIncludeAll bool
+	}{
+		{"admin gets own locations", adminUser(), 7, false},
+		{"superuser gets all locations", superuserUser(), 1, true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			locationRepo := &testLocationRepo{
+				listAdminLocations: func(_ context.Context, adminID int, includeAll bool) ([]locations.AdminLocation, error) {
+					if adminID != tc.wantAdminID {
+						t.Fatalf("adminID: got %d, want %d", adminID, tc.wantAdminID)
+					}
+					if includeAll != tc.wantIncludeAll {
+						t.Fatalf("includeAll: got %v, want %v", includeAll, tc.wantIncludeAll)
+					}
+					return []locations.AdminLocation{}, nil
+				},
 			}
-			if includeAll {
-				t.Fatal("includeAll: got true, want false")
+
+			s := newAdminHandlersTestServer(locationRepo, nil, nil)
+			req := requestWithUser(httptest.NewRequest(http.MethodGet, "/api/admin/locations", nil), tc.user)
+			w := httptest.NewRecorder()
+
+			s.AdminLocationsHandler(w, req)
+
+			if w.Code != http.StatusOK {
+				t.Fatalf("status: got %d, want %d", w.Code, http.StatusOK)
 			}
-			return []locations.AdminLocation{{ID: 10, CompanyID: 1, CompanyName: "Company A", City: "Москва", RoomsCount: 3}}, nil
-		},
-	}
-
-	s := newAdminHandlersTestServer(locationRepo, nil, nil)
-	req := requestWithUser(httptest.NewRequest(http.MethodGet, "/api/admin/locations", nil), adminUser())
-	w := httptest.NewRecorder()
-
-	s.AdminLocationsHandler(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Fatalf("status: got %d, want %d", w.Code, http.StatusOK)
-	}
-
-	data := readServerDataMap(t, w)
-	items, ok := data["items"].([]any)
-	if !ok {
-		t.Fatalf("items type: got %T, want []any", data["items"])
-	}
-	if len(items) != 1 {
-		t.Fatalf("items length: got %d, want 1", len(items))
-	}
-}
-
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем, что superuser получает admin-локации с includeAll=true.
-func TestAdminLocationsHandler_Scenario_SuperuserIncludeAll(t *testing.T) {
-	locationRepo := &testLocationRepo{
-		listAdminLocations: func(_ context.Context, adminID int, includeAll bool) ([]locations.AdminLocation, error) {
-			if adminID != 1 {
-				t.Fatalf("adminID: got %d, want 1", adminID)
-			}
-			if !includeAll {
-				t.Fatal("includeAll: got false, want true")
-			}
-			return []locations.AdminLocation{}, nil
-		},
-	}
-
-	s := newAdminHandlersTestServer(locationRepo, nil, nil)
-	req := requestWithUser(httptest.NewRequest(http.MethodGet, "/api/admin/locations", nil), superuserUser())
-	w := httptest.NewRecorder()
-
-	s.AdminLocationsHandler(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Fatalf("status: got %d, want %d", w.Code, http.StatusOK)
+		})
 	}
 }
 

@@ -67,14 +67,6 @@ func existsLocationByIDQuery() string {
 	return `SELECT EXISTS (SELECT 1 FROM locations WHERE id = $1)`
 }
 
-func intPtr(value int) *int {
-	return &value
-}
-
-func stringPtr(value string) *string {
-	return &value
-}
-
 // Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
 // Проверяем получение списка локаций без фильтров.
 func TestListLocations_Scenario_SuccessWithoutFilters(t *testing.T) {
@@ -106,9 +98,9 @@ func TestListLocations_Scenario_SuccessWithoutFilters(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем получение списка локаций с фильтрами company_id и city.
-func TestListLocations_Scenario_SuccessWithFilters(t *testing.T) {
+// Техника тест-дизайна: классы эквивалентности.
+// Проверяем класс запроса списка локаций с фильтрами company_id и city.
+func TestListLocations_EquivalenceClasses_SuccessWithFilters(t *testing.T) {
 	mock := newLocationsMock(t)
 	repo := newLocationsRepo(mock)
 
@@ -205,15 +197,19 @@ func TestListLocations_ExceptionHandling_ScanErrorPropagates(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: граничные значения.
-// Проверяем недопустимые adminID около нижней границы для обычного администратора.
-func TestListAdminLocations_BoundaryValues_InvalidAdminIDReturnsErrInvalidID(t *testing.T) {
+// Техника тест-дизайна: таблица решений.
+// Проверяем результат ListAdminLocations в зависимости от includeAll и валидности adminID.
+func TestListAdminLocations_DecisionTable_AdminIDValidationAndIncludeAll(t *testing.T) {
 	cases := []struct {
-		name    string
-		adminID int
+		name        string
+		adminID     int
+		includeAll  bool
+		expectQuery bool
+		wantErr     error
 	}{
-		{"admin id is zero", 0},
-		{"admin id is negative", -1},
+		{"admin id is zero without includeAll", 0, false, false, db.ErrInvalidID},
+		{"admin id is negative without includeAll", -1, false, false, db.ErrInvalidID},
+		{"admin id is zero with includeAll", 0, true, true, nil},
 	}
 
 	for _, tc := range cases {
@@ -221,35 +217,30 @@ func TestListAdminLocations_BoundaryValues_InvalidAdminIDReturnsErrInvalidID(t *
 			mock := newLocationsMock(t)
 			repo := newLocationsRepo(mock)
 
-			_, err := repo.ListAdminLocations(context.Background(), tc.adminID, false)
+			if tc.expectQuery {
+				mock.ExpectQuery(regexp.QuoteMeta(queryListAdminLocations)).
+					WithArgs(tc.includeAll, tc.adminID).
+					WillReturnRows(pgxmock.NewRows(adminLocationColumns()))
+			}
 
-			if !errors.Is(err, db.ErrInvalidID) {
-				t.Fatalf("got error %v, want %v", err, db.ErrInvalidID)
+			items, err := repo.ListAdminLocations(context.Background(), tc.adminID, tc.includeAll)
+
+			if tc.wantErr != nil {
+				if !errors.Is(err, tc.wantErr) {
+					t.Fatalf("got error %v, want %v", err, tc.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if items == nil {
+				t.Fatal("got nil, want non-nil empty slice")
+			}
+			if len(items) != 0 {
+				t.Fatalf("got %d locations, want 0", len(items))
 			}
 		})
-	}
-}
-
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем, что суперпользователь может получить все admin-локации с includeAll=true и adminID=0.
-func TestListAdminLocations_Scenario_IncludeAllAllowsZeroAdminID(t *testing.T) {
-	mock := newLocationsMock(t)
-	repo := newLocationsRepo(mock)
-
-	mock.ExpectQuery(regexp.QuoteMeta(queryListAdminLocations)).
-		WithArgs(true, 0).
-		WillReturnRows(pgxmock.NewRows(adminLocationColumns()))
-
-	items, err := repo.ListAdminLocations(context.Background(), 0, true)
-
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if items == nil {
-		t.Fatal("got nil, want non-nil empty slice")
-	}
-	if len(items) != 0 {
-		t.Fatalf("got %d locations, want 0", len(items))
 	}
 }
 
@@ -459,76 +450,89 @@ func TestCreateLocation_EquivalenceClasses_EmptyCityOrAddressReturnsErrInvalidAr
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем успешное создание локации с trim входных данных и timezone по умолчанию.
-func TestCreateLocation_Scenario_SuccessWithDefaultTimezoneAndTrim(t *testing.T) {
-	mock := newLocationsMock(t)
-	repo := newLocationsRepo(mock)
-
-	mock.ExpectQuery(regexp.QuoteMeta(queryCreateLocation)).
-		WithArgs(10, "Москва", "Тверская", "10", 55.75, 37.61, "Europe/Moscow").
-		WillReturnRows(pgxmock.NewRows([]string{"id"}).AddRow(100))
-
-	mock.ExpectQuery(getLocationByIDPattern()).
-		WithArgs(100).
-		WillReturnRows(
-			pgxmock.NewRows(locationColumns()).
-				AddRow(100, 10, "Company A", "Москва", "Москва, Тверская 10", 55.75, 37.61, "Europe/Moscow"),
-		)
-
-	location, err := repo.CreateLocation(
-		context.Background(),
-		10,
-		"  Москва  ",
-		"  Москва, Тверская 10  ",
-		55.75,
-		37.61,
-		"   ",
-	)
-
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+// Техника тест-дизайна: таблица решений.
+// Проверяем выбор timezone при создании локации: пустое значение заменяется значением по умолчанию, непустое используется после trim.
+func TestCreateLocation_DecisionTable_TimezoneSelection(t *testing.T) {
+	cases := []struct {
+		name         string
+		city         string
+		address      string
+		lat          float64
+		lng          float64
+		timezone     string
+		wantID       int
+		wantCity     string
+		wantStreet   string
+		wantHouse    string
+		wantAddress  string
+		wantTimezone string
+	}{
+		{
+			name:         "default timezone",
+			city:         "  Москва  ",
+			address:      "  Москва, Тверская 10  ",
+			lat:          55.75,
+			lng:          37.61,
+			timezone:     "   ",
+			wantID:       100,
+			wantCity:     "Москва",
+			wantStreet:   "Тверская",
+			wantHouse:    "10",
+			wantAddress:  "Москва, Тверская 10",
+			wantTimezone: "Europe/Moscow",
+		},
+		{
+			name:         "explicit timezone",
+			city:         "Казань",
+			address:      "Казань, Баумана 1",
+			lat:          55.79,
+			lng:          49.12,
+			timezone:     " Europe/Moscow ",
+			wantID:       101,
+			wantCity:     "Казань",
+			wantStreet:   "Баумана",
+			wantHouse:    "1",
+			wantAddress:  "Казань, Баумана 1",
+			wantTimezone: "Europe/Moscow",
+		},
 	}
-	if location == nil {
-		t.Fatal("got nil location")
-	}
-	if location.ID != 100 || location.CompanyID != 10 || location.Timezone != "Europe/Moscow" {
-		t.Fatalf("unexpected location: %+v", location)
-	}
-}
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем успешное создание локации с явно переданным timezone.
-func TestCreateLocation_Scenario_SuccessWithExplicitTimezone(t *testing.T) {
-	mock := newLocationsMock(t)
-	repo := newLocationsRepo(mock)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			mock := newLocationsMock(t)
+			repo := newLocationsRepo(mock)
 
-	mock.ExpectQuery(regexp.QuoteMeta(queryCreateLocation)).
-		WithArgs(10, "Казань", "Баумана", "1", 55.79, 49.12, "Europe/Moscow").
-		WillReturnRows(pgxmock.NewRows([]string{"id"}).AddRow(101))
+			mock.ExpectQuery(regexp.QuoteMeta(queryCreateLocation)).
+				WithArgs(10, tc.wantCity, tc.wantStreet, tc.wantHouse, tc.lat, tc.lng, tc.wantTimezone).
+				WillReturnRows(pgxmock.NewRows([]string{"id"}).AddRow(tc.wantID))
 
-	mock.ExpectQuery(getLocationByIDPattern()).
-		WithArgs(101).
-		WillReturnRows(
-			pgxmock.NewRows(locationColumns()).
-				AddRow(101, 10, "Company A", "Казань", "Казань, Баумана 1", 55.79, 49.12, "Europe/Moscow"),
-		)
+			mock.ExpectQuery(getLocationByIDPattern()).
+				WithArgs(tc.wantID).
+				WillReturnRows(
+					pgxmock.NewRows(locationColumns()).
+						AddRow(tc.wantID, 10, "Company A", tc.wantCity, tc.wantAddress, tc.lat, tc.lng, tc.wantTimezone),
+				)
 
-	location, err := repo.CreateLocation(
-		context.Background(),
-		10,
-		"Казань",
-		"Казань, Баумана 1",
-		55.79,
-		49.12,
-		" Europe/Moscow ",
-	)
+			location, err := repo.CreateLocation(
+				context.Background(),
+				10,
+				tc.city,
+				tc.address,
+				tc.lat,
+				tc.lng,
+				tc.timezone,
+			)
 
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if location.ID != 101 || location.City != "Казань" || location.Address != "Казань, Баумана 1" {
-		t.Fatalf("unexpected location: %+v", location)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if location == nil {
+				t.Fatal("got nil location")
+			}
+			if location.ID != tc.wantID || location.City != tc.wantCity || location.Address != tc.wantAddress || location.Timezone != tc.wantTimezone {
+				t.Fatalf("unexpected location: %+v", location)
+			}
+		})
 	}
 }
 
@@ -718,9 +722,9 @@ func TestExistsByID_BoundaryValues_InvalidIDsReturnErrInvalidID(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: таблица решений.
-// Проверяем результат ExistsByID в зависимости от значения SELECT EXISTS.
-func TestExistsByID_DecisionTable(t *testing.T) {
+// Техника тест-дизайна: классы эквивалентности.
+// Проверяем классы результата ExistsByID: локация существует и локация не существует.
+func TestExistsByID_EquivalenceClasses_ExistsAndNotExists(t *testing.T) {
 	cases := []struct {
 		name     string
 		dbResult bool

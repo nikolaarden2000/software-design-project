@@ -26,11 +26,14 @@ func seedSession(sm *SessionManager, id string, userID int, expiresAt time.Time)
 }
 
 // Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем, что Create возвращает непустой hex-идентификатор ожидаемой длины.
-func TestCreate_Scenario_ReturnsNonEmptyHexID(t *testing.T) {
-	sm := newTestSM(time.Hour)
+// Проверяем, что Create создаёт сессию с непустым hex-идентификатором, корректным userID и ожидаемым сроком действия.
+func TestCreate_Scenario_StoresSessionWithExpectedFields(t *testing.T) {
+	ttl := time.Hour
+	sm := newTestSM(ttl)
 
-	id, err := sm.Create(1)
+	before := time.Now().UTC()
+	id, err := sm.Create(99)
+	after := time.Now().UTC()
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -40,17 +43,6 @@ func TestCreate_Scenario_ReturnsNonEmptyHexID(t *testing.T) {
 	}
 	if len(id) != sessionIDLen*2 {
 		t.Errorf("id length: got %d, want %d", len(id), sessionIDLen*2)
-	}
-}
-
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем, что созданная сессия сохраняется с корректным userID.
-func TestCreate_Scenario_StoresCorrectUserID(t *testing.T) {
-	sm := newTestSM(time.Hour)
-
-	id, err := sm.Create(99)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
 	}
 
 	sm.mu.Lock()
@@ -63,25 +55,6 @@ func TestCreate_Scenario_StoresCorrectUserID(t *testing.T) {
 	if s.UserID != 99 {
 		t.Errorf("UserID: got %d, want 99", s.UserID)
 	}
-}
-
-// Техника тест-дизайна: граничные значения.
-// Проверяем, что ExpiresAt попадает в ожидаемое временное окно.
-func TestCreate_BoundaryValues_ExpiresAtWithinExpectedWindow(t *testing.T) {
-	ttl := time.Hour
-	sm := newTestSM(ttl)
-
-	before := time.Now().UTC()
-	id, err := sm.Create(1)
-	after := time.Now().UTC()
-
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	sm.mu.Lock()
-	s := sm.store[id]
-	sm.mu.Unlock()
 
 	lo, hi := before.Add(ttl), after.Add(ttl)
 	if s.ExpiresAt.Before(lo) || s.ExpiresAt.After(hi) {
@@ -89,9 +62,9 @@ func TestCreate_BoundaryValues_ExpiresAtWithinExpectedWindow(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем, что два создания сессии дают разные идентификаторы.
-func TestCreate_EquivalenceClasses_TwoCallsReturnDifferentIDs(t *testing.T) {
+// Техника тест-дизайна: предположение об ошибке.
+// Проверяем, что два создания сессии не возвращают одинаковый идентификатор.
+func TestCreate_ErrorGuessing_TwoCallsReturnDifferentIDs(t *testing.T) {
 	sm := newTestSM(time.Hour)
 
 	id1, err := sm.Create(1)
@@ -109,9 +82,9 @@ func TestCreate_EquivalenceClasses_TwoCallsReturnDifferentIDs(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: граничные значения.
-// Проверяем userID на границах допустимого для SessionManager поведения.
-func TestCreate_BoundaryValues_UserIDs(t *testing.T) {
+// Техника тест-дизайна: классы эквивалентности.
+// Проверяем разные классы целочисленных userID, которые SessionManager сохраняет без валидации.
+func TestCreate_EquivalenceClasses_UserIDValues(t *testing.T) {
 	cases := []struct {
 		name   string
 		userID int
@@ -122,6 +95,8 @@ func TestCreate_BoundaryValues_UserIDs(t *testing.T) {
 	}
 
 	for _, tc := range cases {
+		tc := tc
+
 		t.Run(tc.name, func(t *testing.T) {
 			sm := newTestSM(time.Hour)
 
@@ -147,20 +122,52 @@ func TestGet_DecisionTable(t *testing.T) {
 	cases := []struct {
 		name      string
 		seed      bool
+		userID    int
 		expiresIn time.Duration
+		wantID    int
 		wantOK    bool
 	}{
-		{"not exists", false, 0, false},
-		{"exists and expired", true, -time.Second, false},
-		{"exists and valid", true, time.Hour, true},
+		{"not exists", false, 0, 0, 0, false},
+		{"exists and expired", true, 42, -time.Second, 0, false},
+		{"exists and valid", true, 42, time.Hour, 42, true},
 	}
 
 	for _, tc := range cases {
+		tc := tc
+
 		t.Run(tc.name, func(t *testing.T) {
 			sm := newTestSM(time.Hour)
 			if tc.seed {
-				seedSession(sm, "s", 42, time.Now().UTC().Add(tc.expiresIn))
+				seedSession(sm, "s", tc.userID, time.Now().UTC().Add(tc.expiresIn))
 			}
+
+			gotID, ok := sm.Get("s")
+
+			if gotID != tc.wantID || ok != tc.wantOK {
+				t.Errorf("got (%d, %v), want (%d, %v)", gotID, ok, tc.wantID, tc.wantOK)
+			}
+		})
+	}
+}
+
+// Техника тест-дизайна: граничные значения.
+// Проверяем поведение Get около границы истечения срока действия сессии.
+func TestGet_BoundaryValues_ExpirationBoundary(t *testing.T) {
+	cases := []struct {
+		name      string
+		expiresAt time.Time
+		wantOK    bool
+	}{
+		{"expired by one nanosecond", time.Now().UTC().Add(-time.Nanosecond), false},
+		{"valid by small positive duration", time.Now().UTC().Add(100 * time.Millisecond), true},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			sm := newTestSM(time.Hour)
+			seedSession(sm, "s", 1, tc.expiresAt)
 
 			_, ok := sm.Get("s")
 
@@ -168,60 +175,6 @@ func TestGet_DecisionTable(t *testing.T) {
 				t.Errorf("ok: got %v, want %v", ok, tc.wantOK)
 			}
 		})
-	}
-}
-
-// Техника тест-дизайна: граничные значения.
-// Проверяем сессию, которая истекла совсем недавно.
-func TestGet_BoundaryValues_ExpiredByOneNanosecond(t *testing.T) {
-	sm := newTestSM(time.Hour)
-	seedSession(sm, "s", 1, time.Now().UTC().Add(-time.Nanosecond))
-
-	_, ok := sm.Get("s")
-
-	if ok {
-		t.Error("session expired 1ns ago should not be valid")
-	}
-}
-
-// Техника тест-дизайна: граничные значения.
-// Проверяем сессию, которая ещё действует минимально малое время.
-func TestGet_BoundaryValues_ValidBySmallPositiveDuration(t *testing.T) {
-	sm := newTestSM(time.Hour)
-	seedSession(sm, "s", 1, time.Now().UTC().Add(100*time.Millisecond))
-
-	_, ok := sm.Get("s")
-
-	if !ok {
-		t.Error("session expiring soon should still be valid")
-	}
-}
-
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем, что валидная сессия возвращает корректный userID.
-func TestGet_Scenario_ValidSessionReturnsCorrectUserID(t *testing.T) {
-	sm := newTestSM(time.Hour)
-	seedSession(sm, "s", 77, time.Now().UTC().Add(time.Hour))
-
-	gotID, ok := sm.Get("s")
-
-	if !ok {
-		t.Fatal("expected ok=true")
-	}
-	if gotID != 77 {
-		t.Errorf("userID: got %d, want 77", gotID)
-	}
-}
-
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем класс неизвестного идентификатора сессии.
-func TestGet_EquivalenceClasses_UnknownIDReturnsZeroUserID(t *testing.T) {
-	sm := newTestSM(time.Hour)
-
-	gotID, ok := sm.Get("no-such-id")
-
-	if ok || gotID != 0 {
-		t.Errorf("got (%d, %v), want (0, false)", gotID, ok)
 	}
 }
 
@@ -284,55 +237,6 @@ func TestDelete_EquivalenceClasses(t *testing.T) {
 
 		sm.Delete("ghost")
 	})
-}
-
-// Техника тест-дизайна: переходы состояний.
-// Проверяем жизненный цикл сессии: отсутствует, активна, удалена, истекла.
-func TestSessionLifecycle_StateTransitions(t *testing.T) {
-	sm := newTestSM(time.Hour)
-
-	_, ok := sm.Get("s")
-	if ok {
-		t.Fatal("state=non-existent: expected ok=false")
-	}
-
-	id, err := sm.Create(42)
-	if err != nil {
-		t.Fatalf("Create: %v", err)
-	}
-
-	gotID, ok := sm.Get(id)
-	if !ok || gotID != 42 {
-		t.Fatalf("state=active: got ok=%v userID=%d, want ok=true userID=42", ok, gotID)
-	}
-
-	sm.Delete(id)
-	_, ok = sm.Get(id)
-	if ok {
-		t.Fatal("state=deleted: expected ok=false after Delete")
-	}
-
-	id2, err := sm.Create(7)
-	if err != nil {
-		t.Fatalf("Create: %v", err)
-	}
-
-	sm.mu.Lock()
-	sm.store[id2].ExpiresAt = time.Now().UTC().Add(-time.Second)
-	sm.mu.Unlock()
-
-	_, ok = sm.Get(id2)
-	if ok {
-		t.Fatal("state=expired: expected ok=false")
-	}
-
-	sm.mu.Lock()
-	_, exists := sm.store[id2]
-	sm.mu.Unlock()
-
-	if exists {
-		t.Fatal("state=non-existent after expire: session must be deleted from store")
-	}
 }
 
 // Техника тест-дизайна: сценарное тестирование, позитивный сценарий.

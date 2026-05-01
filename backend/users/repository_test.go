@@ -82,40 +82,8 @@ func TestIsValidRole_EquivalenceClasses(t *testing.T) {
 }
 
 // Техника тест-дизайна: классы эквивалентности.
-// Проверяем класс валидных ролей при создании пользователя.
-func TestCreateUserWithRole_RoleEquivalenceClasses_ValidRoles(t *testing.T) {
-	cases := []struct {
-		name string
-		role string
-	}{
-		{"user role", RoleUser},
-		{"admin role", RoleAdmin},
-		{"superuser role", RoleSuperuser},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			mock := newMock(t)
-			repo := newUserRepo(mock)
-
-			mock.ExpectQuery(regexp.QuoteMeta(queryCreateUserWithRole)).
-				WithArgs("alice", "alice@example.com", "hash", tc.role).
-				WillReturnRows(pgxmock.NewRows([]string{"id"}).AddRow(42))
-
-			id, err := repo.CreateUserWithRole(context.Background(), "alice", "alice@example.com", "hash", tc.role)
-
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if id != 42 {
-				t.Fatalf("id: got %d, want 42", id)
-			}
-		})
-	}
-}
-
-// Техника тест-дизайна: классы эквивалентности.
 // Проверяем два класса ролей: валидная роль (успешное создание) и невалидная роль (ошибка валидации до БД).
+// По принципу ЭК достаточно одного представителя от каждого класса.
 func TestCreateUserWithRole_EquivalenceClasses_ValidAndInvalidRole(t *testing.T) {
 	cases := []struct {
 		name      string
@@ -138,16 +106,6 @@ func TestCreateUserWithRole_EquivalenceClasses_ValidAndInvalidRole(t *testing.T)
 					WillReturnRows(pgxmock.NewRows([]string{"id"}).AddRow(42))
 			},
 			wantID: 42,
-		},
-		{
-			name: "valid role returns new id",
-			role: RoleUser,
-			prepareDB: func(mock pgxmock.PgxPoolIface) {
-				mock.ExpectQuery(regexp.QuoteMeta(queryCreateUserWithRole)).
-					WithArgs("alice", "alice@example.com", "hash", RoleUser).
-					WillReturnRows(pgxmock.NewRows([]string{"id"}).AddRow(100))
-			},
-			wantID: 100,
 		},
 	}
 
@@ -279,26 +237,56 @@ func TestGetUserByEmail_ExceptionHandling_DBErrorPropagates(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем успешное получение пользователя по id.
-func TestGetUserByID_Scenario_Success(t *testing.T) {
-	mock := newMock(t)
-	repo := newUserRepo(mock)
-
-	mock.ExpectQuery(regexp.QuoteMeta(queryGetUserByID)).
-		WithArgs(7).
-		WillReturnRows(
-			pgxmock.NewRows(userColumns()).
-				AddRow(7, "dave", "dave@example.com", "hashed-pwd", RoleAdmin),
-		)
-
-	u, err := repo.GetUserByID(context.Background(), 7)
-
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+// Техника тест-дизайна: классы эквивалентности.
+// Проверяем два класса результата поиска по id: пользователь найден и пользователь отсутствует.
+func TestGetUserByID_EquivalenceClasses_FoundAndNotFound(t *testing.T) {
+	cases := []struct {
+		name      string
+		id        int
+		prepareDB func(mock pgxmock.PgxPoolIface)
+		wantErr   error
+		wantUser  *User
+	}{
+		{
+			name: "user exists",
+			id:   7,
+			prepareDB: func(mock pgxmock.PgxPoolIface) {
+				mock.ExpectQuery(regexp.QuoteMeta(queryGetUserByID)).
+					WithArgs(7).
+					WillReturnRows(
+						pgxmock.NewRows(userColumns()).
+							AddRow(7, "dave", "dave@example.com", "hashed-pwd", RoleAdmin),
+					)
+			},
+			wantUser: &User{ID: 7, Username: "dave", Email: "dave@example.com", Password: "hashed-pwd", Role: RoleAdmin},
+		},
+		{
+			name: "user not found",
+			id:   123,
+			prepareDB: func(mock pgxmock.PgxPoolIface) {
+				mock.ExpectQuery(regexp.QuoteMeta(queryGetUserByID)).
+					WithArgs(123).
+					WillReturnRows(pgxmock.NewRows(userColumns()))
+			},
+			wantErr: db.ErrNotFound,
+		},
 	}
-	if u.ID != 7 || u.Username != "dave" || u.Email != "dave@example.com" || u.Password != "hashed-pwd" || u.Role != RoleAdmin {
-		t.Fatalf("unexpected user fields: %+v", u)
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			mock := newMock(t)
+			repo := newUserRepo(mock)
+			tc.prepareDB(mock)
+
+			got, err := repo.GetUserByID(context.Background(), tc.id)
+
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("got error %v, want %v", err, tc.wantErr)
+			}
+			if tc.wantUser != nil && (got.ID != tc.wantUser.ID || got.Username != tc.wantUser.Username || got.Email != tc.wantUser.Email || got.Password != tc.wantUser.Password || got.Role != tc.wantUser.Role) {
+				t.Fatalf("unexpected user fields: %+v", got)
+			}
+		})
 	}
 }
 
@@ -327,23 +315,6 @@ func TestGetUserByID_BoundaryValues_InvalidIDsReturnErrInvalidID(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем класс отсутствующего пользователя при поиске по id.
-func TestGetUserByID_EquivalenceClasses_NotFoundReturnsErrNotFound(t *testing.T) {
-	mock := newMock(t)
-	repo := newUserRepo(mock)
-
-	mock.ExpectQuery(regexp.QuoteMeta(queryGetUserByID)).
-		WithArgs(123).
-		WillReturnRows(pgxmock.NewRows(userColumns()))
-
-	_, err := repo.GetUserByID(context.Background(), 123)
-
-	if !errors.Is(err, db.ErrNotFound) {
-		t.Fatalf("got error %v, want %v", err, db.ErrNotFound)
-	}
-}
-
 // Техника тест-дизайна: обработка исключений.
 // Проверяем, что ошибка базы данных при поиске по id возвращается вызывающему коду.
 func TestGetUserByID_ExceptionHandling_DBErrorPropagates(t *testing.T) {
@@ -362,9 +333,9 @@ func TestGetUserByID_ExceptionHandling_DBErrorPropagates(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: таблица решений.
-// Проверяем результат IsEmailTaken в зависимости от значения EXISTS.
-func TestIsEmailTaken_DecisionTable(t *testing.T) {
+// Техника тест-дизайна: классы эквивалентности.
+// Проверяем два класса: email свободен (false) и email занят (true).
+func TestIsEmailTaken_EquivalenceClasses(t *testing.T) {
 	cases := []struct {
 		name     string
 		dbResult bool
@@ -416,9 +387,9 @@ func TestIsEmailTaken_ExceptionHandling_DBErrorPropagates(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем получение списка локаций, назначенных администратору.
-func TestListAdminLocations_Scenario_Success(t *testing.T) {
+// Техника тест-дизайна: классы эквивалентности.
+// Проверяем класс администратора с назначенными локациями — успешное получение списка.
+func TestListAdminLocations_EquivalenceClasses_ValidAdminReturnsLocations(t *testing.T) {
 	mock := newMock(t)
 	repo := newUserRepo(mock)
 
@@ -618,9 +589,9 @@ func TestListAdmins_ExceptionHandling_ListAdminLocationsDBErrorPropagates(t *tes
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем успешное назначение администратора на локацию.
-func TestAssignAdminToLocation_Scenario_Success(t *testing.T) {
+// Техника тест-дизайна: классы эквивалентности.
+// Проверяем позитивный класс: валидные ID и роль admin — успешное назначение.
+func TestAssignAdminToLocation_EquivalenceClasses_Success(t *testing.T) {
 	mock := newMock(t)
 	repo := newUserRepo(mock)
 
@@ -665,9 +636,9 @@ func TestAssignAdminToLocation_BoundaryValues_InvalidIDsReturnErrInvalidID(t *te
 	}
 }
 
-// Техника тест-дизайна: таблица решений.
-// Проверяем, что назначение возможно только для пользователя с ролью admin.
-func TestAssignAdminToLocation_DecisionTable_UserMustHaveAdminRole(t *testing.T) {
+// Техника тест-дизайна: классы эквивалентности.
+// Проверяем классы ролей: только admin проходит проверку, остальные роли отклоняются.
+func TestAssignAdminToLocation_EquivalenceClasses_RoleValidation(t *testing.T) {
 	cases := []struct {
 		name    string
 		role    string
@@ -719,6 +690,7 @@ func TestAssignAdminToLocation_ExceptionHandling_GetUserByIDErrorPropagates(t *t
 
 // Техника тест-дизайна: таблица решений.
 // Проверяем преобразование PostgreSQL-ошибок назначения администратора.
+// Два условия: тип ошибки (PgError / обычная) и код ошибки (23505 / 23503 / иной).
 func TestMapAssignmentError_DecisionTable(t *testing.T) {
 	plainErr := fmt.Errorf("plain error")
 	duplicateErr := &pgconn.PgError{Code: "23505"}
@@ -747,28 +719,9 @@ func TestMapAssignmentError_DecisionTable(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
-// Проверяем, что конфликт назначения администратора на локацию возвращается как db.ErrConflict.
-func TestAssignAdminToLocation_ExceptionHandling_DuplicateAssignmentReturnsErrConflict(t *testing.T) {
-	mock := newMock(t)
-	repo := newUserRepo(mock)
-
-	expectUserByID(mock, 7, 7, "admin", "admin@example.com", "hash", RoleAdmin)
-
-	mock.ExpectExec(regexp.QuoteMeta(queryAssignAdminToLocation)).
-		WithArgs(7, 10).
-		WillReturnError(&pgconn.PgError{Code: "23505"})
-
-	err := repo.AssignAdminToLocation(context.Background(), 7, 10)
-
-	if !errors.Is(err, db.ErrConflict) {
-		t.Fatalf("got error %v, want %v", err, db.ErrConflict)
-	}
-}
-
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем успешное удаление назначения администратора на локацию.
-func TestDeleteAdminLocationAssignment_Scenario_Success(t *testing.T) {
+// Техника тест-дизайна: классы эквивалентности.
+// Проверяем позитивный класс: валидные ID — успешное удаление назначения.
+func TestDeleteAdminLocationAssignment_EquivalenceClasses_ValidIDsDeletesAssignment(t *testing.T) {
 	mock := newMock(t)
 	repo := newUserRepo(mock)
 
@@ -811,9 +764,9 @@ func TestDeleteAdminLocationAssignment_BoundaryValues_InvalidIDsReturnErrInvalid
 	}
 }
 
-// Техника тест-дизайна: таблица решений.
-// Проверяем результат DELETE в зависимости от количества удалённых строк.
-func TestDeleteAdminLocationAssignment_DecisionTable_RowsAffected(t *testing.T) {
+// Техника тест-дизайна: классы эквивалентности.
+// Проверяем два класса результата DELETE: строка удалена (успех) и строка не найдена (ErrNotFound).
+func TestDeleteAdminLocationAssignment_EquivalenceClasses_RowsAffected(t *testing.T) {
 	cases := []struct {
 		name         string
 		rowsAffected int64
