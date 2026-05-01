@@ -605,3 +605,594 @@ func TestGetUserBookings_InvalidUserID_ReturnsErrInvalidID(t *testing.T) {
 		}
 	}
 }
+
+var adminBookingCols = []string{
+	"id",
+	"room_id",
+	"room_title",
+	"location_id",
+	"location_address",
+	"user_id",
+	"user_email",
+	"user_username",
+	"start_time",
+	"end_time",
+	"total_price",
+	"status",
+	"timezone",
+}
+
+func intPtr(value int) *int {
+	return &value
+}
+
+func stringPtr(value string) *string {
+	return &value
+}
+
+// Техника тест-дизайна: классы эквивалентности.
+// Проверяем преобразование пользовательских статусов фильтра в статусы, хранящиеся в базе данных.
+func TestDBStatusForFilter_EquivalenceClasses(t *testing.T) {
+	cases := []struct {
+		name   string
+		status string
+		want   string
+	}{
+		{"booked stays booked", "booked", "booked"},
+		{"in_use maps to booked", "in_use", "booked"},
+		{"finished maps to booked", "finished", "booked"},
+		{"canceled stays canceled", "canceled", "canceled"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := dbStatusForFilter(tc.status)
+
+			if got != tc.want {
+				t.Fatalf("dbStatusForFilter(%q): got %q, want %q", tc.status, got, tc.want)
+			}
+		})
+	}
+}
+
+// Техника тест-дизайна: граничные значения.
+// Проверяем недопустимый adminID около нижней границы, если запрос выполняет обычный администратор.
+func TestListAdminBookings_BoundaryValues_InvalidAdminIDReturnsErrInvalidID(t *testing.T) {
+	cases := []struct {
+		name    string
+		adminID int
+	}{
+		{"admin id is zero", 0},
+		{"admin id is negative", -1},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			mock := newMock(t)
+			repo := newBookingRepo(mock)
+
+			_, err := repo.ListAdminBookings(context.Background(), tc.adminID, false, nil, nil, nil, fixed(8))
+
+			if !errors.Is(err, db.ErrInvalidID) {
+				t.Fatalf("got error %v, want %v", err, db.ErrInvalidID)
+			}
+		})
+	}
+}
+
+// Техника тест-дизайна: граничные значения.
+// Проверяем недопустимые значения locationID и roomID около нижней границы.
+func TestListAdminBookings_BoundaryValues_InvalidFilterIDsReturnErrInvalidID(t *testing.T) {
+	cases := []struct {
+		name       string
+		locationID *int
+		roomID     *int
+	}{
+		{"location id is zero", intPtr(0), nil},
+		{"location id is negative", intPtr(-1), nil},
+		{"room id is zero", nil, intPtr(0)},
+		{"room id is negative", nil, intPtr(-1)},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			mock := newMock(t)
+			repo := newBookingRepo(mock)
+
+			_, err := repo.ListAdminBookings(
+				context.Background(),
+				7,
+				false,
+				tc.locationID,
+				tc.roomID,
+				nil,
+				fixed(8),
+			)
+
+			if !errors.Is(err, db.ErrInvalidID) {
+				t.Fatalf("got error %v, want %v", err, db.ErrInvalidID)
+			}
+		})
+	}
+}
+
+// Техника тест-дизайна: классы эквивалентности.
+// Проверяем класс невалидных статусов фильтра.
+func TestListAdminBookings_StatusEquivalenceClasses_InvalidStatusReturnsErrInvalidArgument(t *testing.T) {
+	mock := newMock(t)
+	repo := newBookingRepo(mock)
+
+	_, err := repo.ListAdminBookings(
+		context.Background(),
+		7,
+		false,
+		nil,
+		nil,
+		stringPtr("deleted"),
+		fixed(8),
+	)
+
+	if !errors.Is(err, db.ErrInvalidArgument) {
+		t.Fatalf("got error %v, want %v", err, db.ErrInvalidArgument)
+	}
+}
+
+// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
+// Проверяем успешное получение списка бронирований администратором с фильтрами location_id, room_id и status.
+func TestListAdminBookings_Scenario_SuccessWithFilters(t *testing.T) {
+	mock := newMock(t)
+	repo := newBookingRepo(mock)
+
+	now := fixed(8)
+	start := fixed(10)
+	end := fixed(12)
+	locationID := 3
+	roomID := 5
+	status := "booked"
+
+	mock.ExpectQuery(regexp.QuoteMeta(queryListAdminBookings)).
+		WithArgs(false, 7, locationID, roomID, "booked").
+		WillReturnRows(
+			pgxmock.NewRows(adminBookingCols).
+				AddRow(
+					100,
+					roomID,
+					"Room A",
+					locationID,
+					"Москва, Тверская 10",
+					22,
+					"user@example.com",
+					"alice",
+					start,
+					end,
+					2000,
+					"booked",
+					"UTC",
+				),
+		)
+
+	items, err := repo.ListAdminBookings(
+		context.Background(),
+		7,
+		false,
+		&locationID,
+		&roomID,
+		&status,
+		now,
+	)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("got %d items, want 1", len(items))
+	}
+
+	item := items[0]
+	if item.ID != 100 || item.RoomID != roomID || item.LocationID != locationID || item.UserID != 22 {
+		t.Fatalf("unexpected ids: %+v", item)
+	}
+	if item.RoomTitle != "Room A" || item.LocationAddress != "Москва, Тверская 10" {
+		t.Fatalf("unexpected room/location fields: %+v", item)
+	}
+	if item.Date != "2024-01-15" || item.StartTime != "10:00" || item.EndTime != "12:00" {
+		t.Fatalf("unexpected formatted time fields: %+v", item)
+	}
+	if item.Status != "booked" {
+		t.Fatalf("status: got %q, want booked", item.Status)
+	}
+}
+
+// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
+// Проверяем, что суперпользователь может запрашивать список бронирований с includeAll=true и adminID=0.
+func TestListAdminBookings_Scenario_SuperuserIncludeAllAllowsZeroAdminID(t *testing.T) {
+	mock := newMock(t)
+	repo := newBookingRepo(mock)
+
+	now := fixed(8)
+
+	mock.ExpectQuery(regexp.QuoteMeta(queryListAdminBookings)).
+		WithArgs(true, 0, nil, nil, nil).
+		WillReturnRows(pgxmock.NewRows(adminBookingCols))
+
+	items, err := repo.ListAdminBookings(context.Background(), 0, true, nil, nil, nil, now)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if items == nil {
+		t.Fatal("got nil, want non-nil empty slice")
+	}
+	if len(items) != 0 {
+		t.Fatalf("got %d items, want 0", len(items))
+	}
+}
+
+// Техника тест-дизайна: таблица решений.
+// Проверяем дополнительную фильтрацию вычисляемого статуса после чтения строк из базы.
+func TestListAdminBookings_DecisionTable_ComputedStatusFilter(t *testing.T) {
+	mock := newMock(t)
+	repo := newBookingRepo(mock)
+
+	now := fixed(11)
+	status := "in_use"
+
+	mock.ExpectQuery(regexp.QuoteMeta(queryListAdminBookings)).
+		WithArgs(false, 7, nil, nil, "booked").
+		WillReturnRows(
+			pgxmock.NewRows(adminBookingCols).
+				AddRow(
+					1,
+					10,
+					"Active Room",
+					3,
+					"Москва, Тверская 10",
+					22,
+					"active@example.com",
+					"active",
+					fixed(10),
+					fixed(12),
+					1000,
+					"booked",
+					"UTC",
+				).
+				AddRow(
+					2,
+					11,
+					"Future Room",
+					3,
+					"Москва, Арбат 5",
+					23,
+					"future@example.com",
+					"future",
+					fixed(13),
+					fixed(14),
+					1000,
+					"booked",
+					"UTC",
+				),
+		)
+
+	items, err := repo.ListAdminBookings(context.Background(), 7, false, nil, nil, &status, now)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("got %d items, want 1", len(items))
+	}
+	if items[0].ID != 1 || items[0].Status != "in_use" {
+		t.Fatalf("unexpected item after computed status filter: %+v", items[0])
+	}
+}
+
+// Техника тест-дизайна: классы эквивалентности.
+// Проверяем класс пустого результата.
+func TestListAdminBookings_EquivalenceClasses_EmptyResultReturnsEmptySlice(t *testing.T) {
+	mock := newMock(t)
+	repo := newBookingRepo(mock)
+
+	mock.ExpectQuery(regexp.QuoteMeta(queryListAdminBookings)).
+		WithArgs(false, 7, nil, nil, nil).
+		WillReturnRows(pgxmock.NewRows(adminBookingCols))
+
+	items, err := repo.ListAdminBookings(context.Background(), 7, false, nil, nil, nil, fixed(8))
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if items == nil {
+		t.Fatal("got nil, want non-nil empty slice")
+	}
+	if len(items) != 0 {
+		t.Fatalf("got %d items, want 0", len(items))
+	}
+}
+
+// Техника тест-дизайна: обработка исключений.
+// Проверяем, что ошибка запроса списка admin-бронирований возвращается вызывающему коду.
+func TestListAdminBookings_ExceptionHandling_DBErrorPropagates(t *testing.T) {
+	mock := newMock(t)
+	repo := newBookingRepo(mock)
+
+	dbErr := fmt.Errorf("admin bookings query failed")
+	mock.ExpectQuery(regexp.QuoteMeta(queryListAdminBookings)).
+		WithArgs(false, 7, nil, nil, nil).
+		WillReturnError(dbErr)
+
+	_, err := repo.ListAdminBookings(context.Background(), 7, false, nil, nil, nil, fixed(8))
+
+	if !errors.Is(err, dbErr) {
+		t.Fatalf("got error %v, want %v", err, dbErr)
+	}
+}
+
+// Техника тест-дизайна: обработка исключений.
+// Проверяем ошибку при некорректной timezone в строке admin-бронирования.
+func TestListAdminBookings_ExceptionHandling_InvalidTimezoneReturnsError(t *testing.T) {
+	mock := newMock(t)
+	repo := newBookingRepo(mock)
+
+	mock.ExpectQuery(regexp.QuoteMeta(queryListAdminBookings)).
+		WithArgs(false, 7, nil, nil, nil).
+		WillReturnRows(
+			pgxmock.NewRows(adminBookingCols).
+				AddRow(
+					1,
+					10,
+					"Room A",
+					3,
+					"Москва, Тверская 10",
+					22,
+					"user@example.com",
+					"alice",
+					fixed(10),
+					fixed(12),
+					1000,
+					"booked",
+					"Bad/Timezone",
+				),
+		)
+
+	_, err := repo.ListAdminBookings(context.Background(), 7, false, nil, nil, nil, fixed(8))
+
+	if err == nil {
+		t.Fatal("expected error for invalid timezone, got nil")
+	}
+}
+
+// Техника тест-дизайна: граничные значения.
+// Проверяем недопустимые bookingID и adminID около нижней границы.
+func TestCancelAdminBooking_BoundaryValues_InvalidIDsReturnErrInvalidID(t *testing.T) {
+	cases := []struct {
+		name       string
+		adminID    int
+		includeAll bool
+		bookingID  int
+	}{
+		{"booking id is zero", 7, false, 0},
+		{"booking id is negative", 7, false, -1},
+		{"admin id is zero for regular admin", 0, false, 1},
+		{"admin id is negative for regular admin", -1, false, 1},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			mock := newMock(t)
+			repo := newBookingRepo(mock)
+
+			err := repo.CancelAdminBooking(context.Background(), tc.adminID, tc.includeAll, tc.bookingID, fixed(8))
+
+			if !errors.Is(err, db.ErrInvalidID) {
+				t.Fatalf("got error %v, want %v", err, db.ErrInvalidID)
+			}
+		})
+	}
+}
+
+// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
+// Проверяем успешную отмену будущего бронирования администратором.
+func TestCancelAdminBooking_Scenario_Success(t *testing.T) {
+	mock := newMock(t)
+	repo := newBookingRepo(mock)
+
+	now := fixed(8)
+
+	mock.ExpectQuery(regexp.QuoteMeta(queryGetAdminBookingForCancel)).
+		WithArgs(100, false, 7).
+		WillReturnRows(
+			pgxmock.NewRows([]string{"status", "start_time", "end_time", "accessible"}).
+				AddRow("booked", fixed(10), fixed(12), true),
+		)
+
+	mock.ExpectExec(regexp.QuoteMeta(queryCancelAdminBooking)).
+		WithArgs(100).
+		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
+
+	err := repo.CancelAdminBooking(context.Background(), 7, false, 100, now)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
+// Проверяем, что суперпользователь может отменять бронирование с includeAll=true и adminID=0.
+func TestCancelAdminBooking_Scenario_SuperuserIncludeAllAllowsZeroAdminID(t *testing.T) {
+	mock := newMock(t)
+	repo := newBookingRepo(mock)
+
+	now := fixed(8)
+
+	mock.ExpectQuery(regexp.QuoteMeta(queryGetAdminBookingForCancel)).
+		WithArgs(100, true, 0).
+		WillReturnRows(
+			pgxmock.NewRows([]string{"status", "start_time", "end_time", "accessible"}).
+				AddRow("booked", fixed(10), fixed(12), true),
+		)
+
+	mock.ExpectExec(regexp.QuoteMeta(queryCancelAdminBooking)).
+		WithArgs(100).
+		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
+
+	err := repo.CancelAdminBooking(context.Background(), 0, true, 100, now)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+// Техника тест-дизайна: классы эквивалентности.
+// Проверяем класс отсутствующего бронирования.
+func TestCancelAdminBooking_EquivalenceClasses_NotFoundReturnsErrNotFound(t *testing.T) {
+	mock := newMock(t)
+	repo := newBookingRepo(mock)
+
+	mock.ExpectQuery(regexp.QuoteMeta(queryGetAdminBookingForCancel)).
+		WithArgs(999, false, 7).
+		WillReturnRows(pgxmock.NewRows([]string{"status", "start_time", "end_time", "accessible"}))
+
+	err := repo.CancelAdminBooking(context.Background(), 7, false, 999, fixed(8))
+
+	if !errors.Is(err, db.ErrNotFound) {
+		t.Fatalf("got error %v, want %v", err, db.ErrNotFound)
+	}
+}
+
+// Техника тест-дизайна: таблица решений.
+// Проверяем запрет отмены, если бронирование недоступно администратору.
+func TestCancelAdminBooking_DecisionTable_InaccessibleBookingReturnsErrForbidden(t *testing.T) {
+	mock := newMock(t)
+	repo := newBookingRepo(mock)
+
+	mock.ExpectQuery(regexp.QuoteMeta(queryGetAdminBookingForCancel)).
+		WithArgs(100, false, 7).
+		WillReturnRows(
+			pgxmock.NewRows([]string{"status", "start_time", "end_time", "accessible"}).
+				AddRow("booked", fixed(10), fixed(12), false),
+		)
+
+	err := repo.CancelAdminBooking(context.Background(), 7, false, 100, fixed(8))
+
+	if !errors.Is(err, db.ErrForbidden) {
+		t.Fatalf("got error %v, want %v", err, db.ErrForbidden)
+	}
+}
+
+// Техника тест-дизайна: таблица решений.
+// Проверяем состояния бронирования, в которых административная отмена невозможна.
+func TestCancelAdminBooking_DecisionTable_NonCancellableStatesReturnErrConflict(t *testing.T) {
+	now := fixed(12)
+
+	cases := []struct {
+		name       string
+		baseStatus string
+		start      time.Time
+		end        time.Time
+	}{
+		{"already canceled", "canceled", fixed(13), fixed(14)},
+		{"booking is in use", "booked", now.Add(-time.Hour), now.Add(time.Hour)},
+		{"booking is finished", "booked", now.Add(-3 * time.Hour), now.Add(-time.Hour)},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			mock := newMock(t)
+			repo := newBookingRepo(mock)
+
+			mock.ExpectQuery(regexp.QuoteMeta(queryGetAdminBookingForCancel)).
+				WithArgs(100, false, 7).
+				WillReturnRows(
+					pgxmock.NewRows([]string{"status", "start_time", "end_time", "accessible"}).
+						AddRow(tc.baseStatus, tc.start, tc.end, true),
+				)
+
+			err := repo.CancelAdminBooking(context.Background(), 7, false, 100, now)
+
+			if !errors.Is(err, db.ErrConflict) {
+				t.Fatalf("got error %v, want %v", err, db.ErrConflict)
+			}
+		})
+	}
+}
+
+// Техника тест-дизайна: таблица решений.
+// Проверяем результат UPDATE при административной отмене в зависимости от количества изменённых строк.
+func TestCancelAdminBooking_DecisionTable_RowsAffected(t *testing.T) {
+	cases := []struct {
+		name         string
+		rowsAffected int64
+		wantErr      error
+	}{
+		{"one row updated means success", 1, nil},
+		{"zero rows updated means not found", 0, db.ErrNotFound},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			mock := newMock(t)
+			repo := newBookingRepo(mock)
+
+			mock.ExpectQuery(regexp.QuoteMeta(queryGetAdminBookingForCancel)).
+				WithArgs(100, false, 7).
+				WillReturnRows(
+					pgxmock.NewRows([]string{"status", "start_time", "end_time", "accessible"}).
+						AddRow("booked", fixed(10), fixed(12), true),
+				)
+
+			mock.ExpectExec(regexp.QuoteMeta(queryCancelAdminBooking)).
+				WithArgs(100).
+				WillReturnResult(pgxmock.NewResult("UPDATE", tc.rowsAffected))
+
+			err := repo.CancelAdminBooking(context.Background(), 7, false, 100, fixed(8))
+
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("got error %v, want %v", err, tc.wantErr)
+			}
+		})
+	}
+}
+
+// Техника тест-дизайна: обработка исключений.
+// Проверяем, что ошибка получения admin-бронирования для отмены возвращается вызывающему коду.
+func TestCancelAdminBooking_ExceptionHandling_SelectErrorPropagates(t *testing.T) {
+	mock := newMock(t)
+	repo := newBookingRepo(mock)
+
+	dbErr := fmt.Errorf("select failed")
+	mock.ExpectQuery(regexp.QuoteMeta(queryGetAdminBookingForCancel)).
+		WithArgs(100, false, 7).
+		WillReturnError(dbErr)
+
+	err := repo.CancelAdminBooking(context.Background(), 7, false, 100, fixed(8))
+
+	if !errors.Is(err, dbErr) {
+		t.Fatalf("got error %v, want %v", err, dbErr)
+	}
+}
+
+// Техника тест-дизайна: обработка исключений.
+// Проверяем, что ошибка UPDATE при административной отмене возвращается вызывающему коду.
+func TestCancelAdminBooking_ExceptionHandling_UpdateErrorPropagates(t *testing.T) {
+	mock := newMock(t)
+	repo := newBookingRepo(mock)
+
+	dbErr := fmt.Errorf("update failed")
+
+	mock.ExpectQuery(regexp.QuoteMeta(queryGetAdminBookingForCancel)).
+		WithArgs(100, false, 7).
+		WillReturnRows(
+			pgxmock.NewRows([]string{"status", "start_time", "end_time", "accessible"}).
+				AddRow("booked", fixed(10), fixed(12), true),
+		)
+
+	mock.ExpectExec(regexp.QuoteMeta(queryCancelAdminBooking)).
+		WithArgs(100).
+		WillReturnError(dbErr)
+
+	err := repo.CancelAdminBooking(context.Background(), 7, false, 100, fixed(8))
+
+	if !errors.Is(err, dbErr) {
+		t.Fatalf("got error %v, want %v", err, dbErr)
+	}
+}
