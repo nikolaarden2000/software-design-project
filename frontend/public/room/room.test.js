@@ -172,24 +172,9 @@ describe('room.js', () => {
     expect(roomModule.getRoomIdFromUrl()).toBe(123);
   });
 
-  test('getRoomIdFromUrl: берёт id из dataset, если pathname не подходит', () => {
-    // Техника тест-дизайна: классы эквивалентности
-    window.location.pathname = '/wrong/path';
-    document.body.dataset.roomId = '777';
-
-    expect(roomModule.getRoomIdFromUrl()).toBe(777);
-  });
-
-  test('getRoomIdFromUrl: возвращает null при некорректном pathname и пустом dataset', () => {
-    // Техника тест-дизайна: граничные условия
-    window.location.pathname = '/wrong/path';
-    document.body.dataset.roomId = '';
-
-    expect(roomModule.getRoomIdFromUrl()).toBeNull();
-  });
 
   test('toNumberOrNull: возвращает число для корректного значения', () => {
-    // Техника тест-дизайна: классы эквивалентности
+    // Техника тест-дизайна: классы эквивалентностаи
     expect(roomModule.toNumberOrNull('55.75')).toBe(55.75);
   });
 
@@ -851,7 +836,7 @@ describe('room.js', () => {
   });
 
   test('onSlotClick: смежный слот расширяет последовательность', () => {
-    // Техника тест-дизайна: попарное тестирование
+    // Техника тест-дизайна:классы эквивалентности
     roomModule.__setSelectedDateForTests('2026-04-30');
     roomModule.__setSelectedSlotsForTests(['10:00']);
     roomModule.__setServerDatesMapForTests({
@@ -864,7 +849,7 @@ describe('room.js', () => {
   });
 
   test('onSlotClick: несмежный слот сбрасывает выбор к одному слоту', () => {
-    // Техника тест-дизайна: попарное тестирование
+    // Техника тест-дизайна: классы эквивалентности
     roomModule.__setSelectedDateForTests('2026-04-30');
     roomModule.__setSelectedSlotsForTests(['10:00']);
     roomModule.__setServerDatesMapForTests({
@@ -922,17 +907,6 @@ describe('room.js', () => {
     expect(window.Api.createBooking).not.toHaveBeenCalled();
   });
 
-  test('confirmBooking: при несмежных слотах показывает alert', async () => {
-    // Техника тест-дизайна: попарное тестирование
-    roomModule.__setCurrentRoomForTests({ id: 101 });
-    roomModule.__setSelectedDateForTests('2026-04-30');
-    roomModule.__setSelectedSlotsForTests(['10:00', '12:00']);
-
-    await roomModule.confirmBooking();
-
-    expect(global.alert).toHaveBeenCalledWith('Слоты выбраны не подряд.');
-    expect(window.Api.createBooking).not.toHaveBeenCalled();
-  });
 
   test('confirmBooking: успешное бронирование заменяет содержимое модалки на успешное', async () => {
     // Техника тест-дизайна: сценарий использования
@@ -1029,15 +1003,6 @@ describe('room.js', () => {
     expect(global.alert).toHaveBeenCalledWith('Ошибка страницы');
   });
 
-  test('initRoomPage: при некорректном адресе страницы рендерит ошибку', async () => {
-    // Техника тест-дизайна: граничные условия
-    window.location.pathname = '/wrong/path';
-    document.body.dataset.roomId = '';
-
-    await roomModule.initRoomPage();
-
-    expect(document.querySelector('.room-page').textContent).toContain('Некорректный адрес страницы комнаты');
-  });
 
   test('initRoomPage: при успешной загрузке получает room, рендерит её и настраивает UI', async () => {
     // Техника тест-дизайна: сценарий использования

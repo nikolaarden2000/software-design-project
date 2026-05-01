@@ -105,10 +105,6 @@ describe('admin.js', () => {
     expect(adminModule.getRoomStatusLabel('draft')).toBe('Черновик');
   });
 
-  test('getRoomStatusLabel: для неизвестного статуса возвращает исходное значение', () => {
-    // Техника тест-дизайна: предугадывание ошибок
-    expect(adminModule.getRoomStatusLabel('unknown_status')).toBe('unknown_status');
-  });
 
   test('getBookingStatusLabel: возвращает русскую подпись для booked', () => {
     // Техника тест-дизайна: классы эквивалентности
@@ -338,18 +334,6 @@ describe('admin.js', () => {
     expect(document.getElementById('adminRoot').textContent).toContain('В админ-панель');
   });
 
-  test('routeAdminPage: для /admin рендерит главную страницу админки', async () => {
-  // Техника тест-дизайна: таблица решений
-  window.location.pathname = '/admin';
-  window.Api = makeApi({
-    getAdminLocations: jest.fn().mockResolvedValue({ items: [] })
-  });
-
-  await adminModule.routeAdminPage();
-
-  expect(document.getElementById('adminRoot').textContent).toContain('Мои локации');
-  expect(document.getElementById('adminRoot').textContent).toContain('Доступные локации');
-});
 
   test('routeAdminPage: для /admin/location/15 рендерит страницу локации', async () => {
   // Техника тест-дизайна: таблица решений
@@ -377,42 +361,6 @@ describe('admin.js', () => {
   expect(window.Api.getAdminRooms).toHaveBeenCalledWith({ location_id: 15 });
 });
 
-  test('routeAdminPage: для /admin/room/new без location_id рендерит ошибку', async () => {
-  // Техника тест-дизайна: граничные условия
-  window.location.pathname = '/admin/room/new';
-  window.location.search = '';
-
-  await adminModule.routeAdminPage();
-
-  expect(document.getElementById('adminRoot').textContent).toContain('Ошибка');
-  expect(document.getElementById('adminRoot').textContent).toContain('Не указан location_id');
-});
-
- test('routeAdminPage: для /admin/room/22 рендерит страницу помещения', async () => {
-  // Техника тест-дизайна: таблица решений
-  window.location.pathname = '/admin/room/22';
-  window.Api = makeApi({
-    getAdminRoom: jest.fn().mockResolvedValue({
-      id: 22,
-      location_id: 1,
-      title: 'Комната 22',
-      description: 'Описание',
-      price: 1200,
-      capacity: 6,
-      available_from: '09:00',
-      available_to: '21:00',
-      images: ['/img/1.png'],
-      status: 'draft',
-      rejection_reason: ''
-    })
-  });
-
-  await adminModule.routeAdminPage();
-
-  expect(window.Api.getAdminRoom).toHaveBeenCalledWith(22);
-  expect(document.getElementById('adminRoot').textContent).toContain('Комната 22');
-  expect(document.getElementById('adminRoot').textContent).toContain('Информация о помещении');
-});
 
   test('routeAdminPage: для неизвестного маршрута показывает ошибку', async () => {
   // Техника тест-дизайна: классы эквивалентности

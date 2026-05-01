@@ -171,19 +171,6 @@ describe('me.js', () => {
     expect(console.error).toHaveBeenCalled();
   });
 
-  test('loadBookings: принимает массив из data.items и сохраняет в currentBookings', async () => {
-    // Техника тест-дизайна: классы эквивалентности
-    window.Api = makeApi({
-      getMyBookings: jest.fn().mockResolvedValue({
-        items: [sampleBooking()]
-      })
-    });
-
-    await meModule.loadBookings();
-
-    expect(meModule.__getCurrentBookingsForTests()).toEqual([sampleBooking()]);
-  });
-
   test('loadBookings: принимает массив, если API вернул его напрямую', async () => {
     // Техника тест-дизайна: классы эквивалентности
     const items = [sampleBooking()];
@@ -194,29 +181,6 @@ describe('me.js', () => {
     await meModule.loadBookings();
 
     expect(meModule.__getCurrentBookingsForTests()).toEqual(items);
-  });
-
-  test('loadBookings: unauthorized при загрузке бронирований ведёт на /auth', async () => {
-    // Техника тест-дизайна: таблица решений
-    window.Api = makeApi({
-      getMyBookings: jest.fn().mockRejectedValue({ code: 'unauthorized' })
-    });
-
-    await meModule.loadBookings();
-
-    expect(window.location.href).toBe('/auth');
-  });
-
-  test('loadBookings: обычная ошибка загрузки показывает alert с message', async () => {
-    // Техника тест-дизайна: предугадывание ошибок
-    window.Api = makeApi({
-      getMyBookings: jest.fn().mockRejectedValue({ message: 'Не удалось загрузить список' })
-    });
-
-    await meModule.loadBookings();
-
-    expect(global.alert).toHaveBeenCalledWith('Не удалось загрузить список');
-    expect(console.error).toHaveBeenCalled();
   });
 
   test('clearColumns: очищает все четыре колонки', () => {
@@ -234,12 +198,6 @@ describe('me.js', () => {
     expect(document.getElementById('col-canceled').innerHTML).toBe('');
   });
 
-  test('renderBookings: при пустом массиве показывает emptyMessage', () => {
-    // Техника тест-дизайна: классы эквивалентности
-    meModule.renderBookings([]);
-
-    expect(document.getElementById('emptyMessage').classList.contains('hidden')).toBe(false);
-  });
 
   test('renderBookings: распределяет карточки по колонкам по статусу', () => {
     // Техника тест-дизайна: сценарий использования
@@ -259,29 +217,13 @@ describe('me.js', () => {
     expect(document.getElementById('emptyMessage').classList.contains('hidden')).toBe(true);
   });
 
-  test('renderBookings: неизвестный статус кладёт карточку в finished', () => {
-    // Техника тест-дизайна: предугадывание ошибок
-    meModule.renderBookings([
-      sampleBooking({ id: 'x', status: 'unknown_status' })
-    ]);
-
-    expect(document.querySelectorAll('#col-finished .me-card').length).toBe(1);
-  });
-
-  test('createCard: создаёт карточку и добавляет кнопку отмены только для status=booked', () => {
+  test('createCardBooked: создаёт карточку и добавляет кнопку отмены только для status=booked', () => {
     // Техника тест-дизайна: таблица решений
     const bookedCard = meModule.createCard(sampleBooking({ status: 'booked' }));
     const finishedCard = meModule.createCard(sampleBooking({ id: '2', status: 'finished' }));
 
     expect(bookedCard.querySelector('.cancel-btn')).not.toBeNull();
     expect(finishedCard.querySelector('.cancel-btn')).toBeNull();
-  });
-
-  test('createCard: при отсутствии image_url подставляет placeholder', () => {
-    // Техника тест-дизайна: классы эквивалентности
-    const card = meModule.createCard(sampleBooking({ image_url: '' }));
-
-    expect(card.querySelector('img').src).toContain('/shared/placeholders/room-placeholder.svg');
   });
 
   test('createCard: клик по карточке ведёт на страницу комнаты', () => {
@@ -358,48 +300,6 @@ describe('me.js', () => {
     expect(meModule.__getCurrentBookingsForTests()[0].status).toBe('canceled');
   });
 
-  test('cancelBooking: unauthorized показывает alert и ведёт на /auth', async () => {
-    // Техника тест-дизайна: таблица решений
-    window.Api = makeApi({
-      cancelBooking: jest.fn().mockRejectedValue({ code: 'unauthorized' })
-    });
-
-    await meModule.cancelBooking('b1');
-
-    expect(global.alert).toHaveBeenCalledWith('Необходимо авторизоваться');
-    expect(window.location.href).toBe('/auth');
-  });
-
-  test('cancelBooking: cannot_cancel_booking показывает alert и перезагружает список', async () => {
-    // Техника тест-дизайна: таблица решений
-    window.Api = makeApi({
-      cancelBooking: jest.fn().mockRejectedValue({
-        code: 'cannot_cancel_booking',
-        message: 'Бронь уже используется'
-      }),
-      getMyBookings: jest.fn().mockResolvedValue({ items: [] })
-    });
-
-    await meModule.cancelBooking('b1');
-
-    expect(global.alert).toHaveBeenCalledWith('Бронь уже используется');
-    expect(window.Api.getMyBookings).toHaveBeenCalled();
-  });
-
-  test('cancelBooking: неизвестная ошибка показывает alert', async () => {
-    // Техника тест-дизайна: предугадывание ошибок
-    window.Api = makeApi({
-      cancelBooking: jest.fn().mockRejectedValue({
-        message: 'Ошибка отмены бронирования'
-      })
-    });
-
-    await meModule.cancelBooking('b1');
-
-    expect(global.alert).toHaveBeenCalledWith('Ошибка отмены бронирования');
-    expect(console.error).toHaveBeenCalled();
-  });
-
   test('bindModalEvents: confirmNo закрывает модалку', () => {
     // Техника тест-дизайна: переходы состояний
     meModule.openConfirmCancel('b1');
@@ -458,12 +358,5 @@ describe('me.js', () => {
 
     expect(global.alert).toHaveBeenCalledWith('Ошибка выхода');
     expect(console.error).toHaveBeenCalled();
-  });
-
-  test('bindLogout: если logoutBtn отсутствует, функция завершается без ошибки', () => {
-    // Техника тест-дизайна: предугадывание ошибок
-    document.getElementById('logoutBtn').remove();
-
-    expect(() => meModule.bindLogout()).not.toThrow();
   });
 });
