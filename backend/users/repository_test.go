@@ -115,106 +115,165 @@ func TestCreateUserWithRole_RoleEquivalenceClasses_ValidRoles(t *testing.T) {
 }
 
 // Техника тест-дизайна: классы эквивалентности.
-// Проверяем класс невалидных ролей, которые отклоняются до обращения к базе данных.
-func TestCreateUserWithRole_RoleEquivalenceClasses_InvalidRole(t *testing.T) {
-	mock := newMock(t)
-	repo := newUserRepo(mock)
+// Проверяем два класса ролей: валидная роль (успешное создание) и невалидная роль (ошибка валидации до БД).
+func TestCreateUserWithRole_EquivalenceClasses_ValidAndInvalidRole(t *testing.T) {
+	cases := []struct {
+		name      string
+		role      string
+		prepareDB func(mock pgxmock.PgxPoolIface)
+		wantID    int
+		wantErr   error
+	}{
+		{
+			name:    "invalid role rejected before db call",
+			role:    "moderator",
+			wantErr: db.ErrInvalidArgument,
+		},
+		{
+			name: "valid role returns new id",
+			role: RoleAdmin,
+			prepareDB: func(mock pgxmock.PgxPoolIface) {
+				mock.ExpectQuery(regexp.QuoteMeta(queryCreateUserWithRole)).
+					WithArgs("alice", "alice@example.com", "hash", RoleAdmin).
+					WillReturnRows(pgxmock.NewRows([]string{"id"}).AddRow(42))
+			},
+			wantID: 42,
+		},
+		{
+			name: "valid role returns new id",
+			role: RoleUser,
+			prepareDB: func(mock pgxmock.PgxPoolIface) {
+				mock.ExpectQuery(regexp.QuoteMeta(queryCreateUserWithRole)).
+					WithArgs("alice", "alice@example.com", "hash", RoleUser).
+					WillReturnRows(pgxmock.NewRows([]string{"id"}).AddRow(100))
+			},
+			wantID: 100,
+		},
+	}
 
-	_, err := repo.CreateUserWithRole(context.Background(), "alice", "alice@example.com", "hash", "moderator")
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			mock := newMock(t)
+			repo := newUserRepo(mock)
+			if tc.prepareDB != nil {
+				tc.prepareDB(mock)
+			}
 
-	if !errors.Is(err, db.ErrInvalidArgument) {
-		t.Fatalf("got error %v, want %v", err, db.ErrInvalidArgument)
+			id, err := repo.CreateUserWithRole(context.Background(), "alice", "alice@example.com", "hash", tc.role)
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("got error %v, want %v", err, tc.wantErr)
+			}
+			if id != tc.wantID {
+				t.Fatalf("id: got %d, want %d", id, tc.wantID)
+			}
+		})
 	}
 }
 
-// Техника тест-дизайна: таблица решений.
-// Проверяем ветку ON CONFLICT DO NOTHING, когда email уже занят.
-func TestCreateUserWithRole_DecisionTable_EmailAlreadyTakenReturnsErrEmailTaken(t *testing.T) {
-	mock := newMock(t)
-	repo := newUserRepo(mock)
-
-	mock.ExpectQuery(regexp.QuoteMeta(queryCreateUserWithRole)).
-		WithArgs("alice", "alice@example.com", "hash", RoleUser).
-		WillReturnRows(pgxmock.NewRows([]string{"id"}))
-
-	_, err := repo.CreateUserWithRole(context.Background(), "alice", "alice@example.com", "hash", RoleUser)
-
-	if !errors.Is(err, db.ErrEmailTaken) {
-		t.Fatalf("got error %v, want %v", err, db.ErrEmailTaken)
-	}
-}
-
-// Техника тест-дизайна: обработка исключений.
-// Проверяем, что ошибка базы данных при создании пользователя не теряется.
-func TestCreateUserWithRole_ExceptionHandling_DBErrorPropagates(t *testing.T) {
-	mock := newMock(t)
-	repo := newUserRepo(mock)
-
+// Техника тест-дизайна: предугадывание ошибок + обработка исключений.
+// Проверяем типичные операционные сбои: конфликт по email и произвольная ошибка БД.
+func TestCreateUserWithRole_ErrorGuessingAndExceptionHandling(t *testing.T) {
 	dbErr := fmt.Errorf("insert failed")
-	mock.ExpectQuery(regexp.QuoteMeta(queryCreateUserWithRole)).
-		WithArgs("alice", "alice@example.com", "hash", RoleAdmin).
-		WillReturnError(dbErr)
-
-	_, err := repo.CreateUserWithRole(context.Background(), "alice", "alice@example.com", "hash", RoleAdmin)
-
-	if !errors.Is(err, dbErr) {
-		t.Fatalf("got error %v, want %v", err, dbErr)
+	cases := []struct {
+		name      string
+		role      string
+		prepareDB func(mock pgxmock.PgxPoolIface)
+		wantErr   error
+	}{
+		{
+			name: "taken email returns domain error",
+			role: RoleUser,
+			prepareDB: func(mock pgxmock.PgxPoolIface) {
+				mock.ExpectQuery(regexp.QuoteMeta(queryCreateUserWithRole)).
+					WithArgs("alice", "alice@example.com", "hash", RoleUser).
+					WillReturnRows(pgxmock.NewRows([]string{"id"}))
+			},
+			wantErr: db.ErrEmailTaken,
+		},
+		{
+			name: "db error is propagated",
+			role: RoleAdmin,
+			prepareDB: func(mock pgxmock.PgxPoolIface) {
+				mock.ExpectQuery(regexp.QuoteMeta(queryCreateUserWithRole)).
+					WithArgs("alice", "alice@example.com", "hash", RoleAdmin).
+					WillReturnError(dbErr)
+			},
+			wantErr: dbErr,
+		},
 	}
-}
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем успешное получение пользователя по email.
-func TestGetUserByEmail_Scenario_Success(t *testing.T) {
-	mock := newMock(t)
-	repo := newUserRepo(mock)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			mock := newMock(t)
+			repo := newUserRepo(mock)
+			tc.prepareDB(mock)
 
-	mock.ExpectQuery(regexp.QuoteMeta(queryGetUserByEmail)).
-		WithArgs("alice@example.com").
-		WillReturnRows(
-			pgxmock.NewRows(userColumns()).
-				AddRow(1, "alice", "alice@example.com", "hashed-pwd", RoleUser),
-		)
-
-	u, err := repo.GetUserByEmail(context.Background(), "alice@example.com")
-
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if u.ID != 1 || u.Username != "alice" || u.Email != "alice@example.com" || u.Password != "hashed-pwd" || u.Role != RoleUser {
-		t.Fatalf("unexpected user fields: %+v", u)
+			_, err := repo.CreateUserWithRole(context.Background(), "alice", "alice@example.com", "hash", tc.role)
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("got error %v, want %v", err, tc.wantErr)
+			}
+		})
 	}
 }
 
 // Техника тест-дизайна: классы эквивалентности.
-// Проверяем класс отсутствующего пользователя.
-func TestGetUserByEmail_EquivalenceClasses_NotFoundReturnsErrNotFound(t *testing.T) {
-	mock := newMock(t)
-	repo := newUserRepo(mock)
-
-	mock.ExpectQuery(regexp.QuoteMeta(queryGetUserByEmail)).
-		WithArgs("ghost@example.com").
-		WillReturnRows(pgxmock.NewRows(userColumns()))
-
-	_, err := repo.GetUserByEmail(context.Background(), "ghost@example.com")
-
-	if !errors.Is(err, db.ErrNotFound) {
-		t.Fatalf("got error %v, want %v", err, db.ErrNotFound)
+// Проверяем классы результата поиска по email: пользователь найден и пользователь отсутствует.
+func TestGetUserByEmail_EquivalenceClasses_FoundAndNotFound(t *testing.T) {
+	cases := []struct {
+		name      string
+		email     string
+		prepareDB func(mock pgxmock.PgxPoolIface)
+		wantErr   error
+		wantUser  *User
+	}{
+		{
+			name:  "user exists",
+			email: "alice@example.com",
+			prepareDB: func(mock pgxmock.PgxPoolIface) {
+				mock.ExpectQuery(regexp.QuoteMeta(queryGetUserByEmail)).
+					WithArgs("alice@example.com").
+					WillReturnRows(pgxmock.NewRows(userColumns()).AddRow(1, "alice", "alice@example.com", "hashed-pwd", RoleUser))
+			},
+			wantUser: &User{ID: 1, Username: "alice", Email: "alice@example.com", Password: "hashed-pwd", Role: RoleUser},
+		},
+		{
+			name:  "user not found",
+			email: "ghost@example.com",
+			prepareDB: func(mock pgxmock.PgxPoolIface) {
+				mock.ExpectQuery(regexp.QuoteMeta(queryGetUserByEmail)).
+					WithArgs("ghost@example.com").
+					WillReturnRows(pgxmock.NewRows(userColumns()))
+			},
+			wantErr: db.ErrNotFound,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			mock := newMock(t)
+			repo := newUserRepo(mock)
+			tc.prepareDB(mock)
+			got, err := repo.GetUserByEmail(context.Background(), tc.email)
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("got error %v, want %v", err, tc.wantErr)
+			}
+			if tc.wantUser != nil && (got.ID != tc.wantUser.ID || got.Email != tc.wantUser.Email || got.Role != tc.wantUser.Role) {
+				t.Fatalf("unexpected user fields: %+v", got)
+			}
+		})
 	}
 }
 
 // Техника тест-дизайна: обработка исключений.
-// Проверяем, что ошибка базы данных при поиске по email возвращается вызывающему коду.
+// Проверяем, что ошибка БД при поиске по email пробрасывается без потери.
 func TestGetUserByEmail_ExceptionHandling_DBErrorPropagates(t *testing.T) {
 	mock := newMock(t)
 	repo := newUserRepo(mock)
-
 	dbErr := fmt.Errorf("timeout")
 	mock.ExpectQuery(regexp.QuoteMeta(queryGetUserByEmail)).
 		WithArgs("alice@example.com").
 		WillReturnError(dbErr)
 
 	_, err := repo.GetUserByEmail(context.Background(), "alice@example.com")
-
 	if !errors.Is(err, dbErr) {
 		t.Fatalf("got error %v, want %v", err, dbErr)
 	}
