@@ -7,72 +7,69 @@ import (
 	"testing"
 )
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем успешную запись JSON-ответа с data.
-func TestWriteJSON_Scenario_WritesDataResponse(t *testing.T) {
-	w := httptest.NewRecorder()
-
-	WriteJSON(w, http.StatusOK, map[string]any{
-		"id":   10,
-		"name": "test",
-	})
-
-	res := w.Result()
-	defer res.Body.Close()
-
-	if res.StatusCode != http.StatusOK {
-		t.Fatalf("status: got %d, want %d", res.StatusCode, http.StatusOK)
+// Техника тест-дизайна: таблица решений.
+// Проверяем сочетания статуса и типа ответа: обычный JSON c data и особый случай 204 без тела.
+func TestWriteJSON_DecisionTable_StatusAndBodyBehavior(t *testing.T) {
+	cases := []struct {
+		name         string
+		status       int
+		payload      any
+		expectNoBody bool
+	}{
+		{
+			name:    "status 200 writes data body",
+			status:  http.StatusOK,
+			payload: map[string]any{"id": 10, "name": "test"},
+		},
+		{
+			name:         "status 204 writes no body",
+			status:       http.StatusNoContent,
+			payload:      map[string]any{"id": 10},
+			expectNoBody: true,
+		},
 	}
 
-	if got := res.Header.Get("Content-Type"); got != "application/json" {
-		t.Fatalf("Content-Type: got %q, want application/json", got)
-	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			WriteJSON(w, tc.status, tc.payload)
 
-	var body Response
-	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
-		t.Fatalf("Decode response body: %v", err)
-	}
+			res := w.Result()
+			defer res.Body.Close()
 
-	if body.Error != nil {
-		t.Fatalf("Error: got %+v, want nil", body.Error)
-	}
+			if res.StatusCode != tc.status {
+				t.Fatalf("status: got %d, want %d", res.StatusCode, tc.status)
+			}
+			if got := res.Header.Get("Content-Type"); got != "application/json" {
+				t.Fatalf("Content-Type: got %q, want application/json", got)
+			}
 
-	data, ok := body.Data.(map[string]any)
-	if !ok {
-		t.Fatalf("Data type: got %T, want map[string]any", body.Data)
-	}
+			if tc.expectNoBody {
+				if body := w.Body.String(); body != "" {
+					t.Fatalf("body: got %q, want empty body", body)
+				}
+				return
+			}
 
-	if data["name"] != "test" {
-		t.Fatalf("name: got %v, want test", data["name"])
-	}
+			var body Response
+			if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
+				t.Fatalf("Decode response body: %v", err)
+			}
+			if body.Error != nil {
+				t.Fatalf("Error: got %+v, want nil", body.Error)
+			}
 
-	if data["id"].(float64) != 10 {
-		t.Fatalf("id: got %v, want 10", data["id"])
-	}
-}
-
-// Техника тест-дизайна: граничные значения.
-// Проверяем особый граничный HTTP-статус 204, при котором тело ответа не записывается.
-func TestWriteJSON_BoundaryValues_NoContentWritesNoBody(t *testing.T) {
-	w := httptest.NewRecorder()
-
-	WriteJSON(w, http.StatusNoContent, map[string]any{
-		"id": 10,
-	})
-
-	res := w.Result()
-	defer res.Body.Close()
-
-	if res.StatusCode != http.StatusNoContent {
-		t.Fatalf("status: got %d, want %d", res.StatusCode, http.StatusNoContent)
-	}
-
-	if got := res.Header.Get("Content-Type"); got != "application/json" {
-		t.Fatalf("Content-Type: got %q, want application/json", got)
-	}
-
-	if body := w.Body.String(); body != "" {
-		t.Fatalf("body: got %q, want empty body", body)
+			data, ok := body.Data.(map[string]any)
+			if !ok {
+				t.Fatalf("Data type: got %T, want map[string]any", body.Data)
+			}
+			if data["name"] != "test" {
+				t.Fatalf("name: got %v, want test", data["name"])
+			}
+			if data["id"].(float64) != 10 {
+				t.Fatalf("id: got %v, want 10", data["id"])
+			}
+		})
 	}
 }
 
