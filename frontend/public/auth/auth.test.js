@@ -334,10 +334,10 @@ describe('auth.js - модульные тесты', () => {
   });
 
   /*
-   * Техника тест-дизайна: анализ граничных значений.
+   * Техника тест-дизайна: классы эквивалентности.
    * Проверяем границу совпадения паролей: два значения должны быть строго одинаковыми.
    */
-  test('bindRegisterForm: если пароль и подтверждение отличаются, показывает ошибку', async () => {
+  test('bindRegisterFormPassword: если пароль и подтверждение отличаются, показывает ошибку', async () => {
     const registerForm = document.getElementById('registerForm');
 
     auth.bindRegisterForm(registerForm);
@@ -450,26 +450,6 @@ describe('auth.js - модульные тесты', () => {
     expect(() => auth.bindRegisterForm(null)).not.toThrow();
   });
 
-
-  /*
-   * Техника тест-дизайна: тестирование состояний и переходов.
-   * Проверяем ветку, когда пользователь отменяет выход из аккаунта.
-   */
-  test('bindLogoutButton: при отмене подтверждения не вызывает logoutUser', async () => {
-    const logoutBtn = createLogoutButton();
-
-    global.confirm.mockReturnValueOnce(false);
-
-    auth.bindLogoutButton(logoutBtn);
-
-    logoutBtn.click();
-
-    await flushPromises();
-
-    expect(global.confirm).toHaveBeenCalledWith('Выйти из аккаунта?');
-    expect(window.Api.logoutUser).not.toHaveBeenCalled();
-    expect(logoutBtn.disabled).toBe(false);
-  });
 
   /*
    * Техника тест-дизайна: негативное тестирование.

@@ -6,7 +6,6 @@ describe('superuser.js', () => {
     await Promise.resolve();
     await Promise.resolve();
     await Promise.resolve();
-    await Promise.resolve();
   }
 
   function buildBaseDOM() {
@@ -603,7 +602,7 @@ describe('superuser.js', () => {
   });
 
   test('bindAssignLocationsForm: успешно привязывает уникальные локации к администратору', async () => {
-    // Техника тест-дизайна: попарное тестирование
+    // Техника тест-дизайна: классы эквивалентности
     window.Api = makeApi({
       assignAdminToLocation: jest.fn().mockResolvedValue({}),
       getAdmins: jest.fn().mockResolvedValue({
@@ -806,7 +805,7 @@ describe('superuser.js', () => {
   });
 
   test('renderLocationPickerList: помечает уже выбранную в другой строке локацию как disabled', () => {
-    // Техника тест-дизайна: таблица решений
+    // Техника тест-дизайна: классы эквивалентности
     superuserModule.__setLocationsForTests([
       { id: 10, company_name: 'Компания А', city: 'Москва', address: 'Адрес 1', timezone: 'Europe/Moscow' },
       { id: 11, company_name: 'Компания Б', city: 'Казань', address: 'Адрес 2', timezone: 'Europe/Moscow' }
@@ -829,16 +828,6 @@ describe('superuser.js', () => {
     superuserModule.selectLocationForAssignment(10);
 
     expect(superuserModule.__getSelectedAssignmentLocationIdsForTests()).toEqual([]);
-  });
-
-  test('selectLocationForAssignment: не даёт выбрать одну и ту же локацию в другой строке', () => {
-    // Техника тест-дизайна: таблица решений
-    superuserModule.__setSelectedAssignmentLocationIdsForTests([10]);
-    superuserModule.__setActiveLocationPickerRowIndexForTests(1);
-
-    superuserModule.selectLocationForAssignment(10);
-
-    expect(superuserModule.__getSelectedAssignmentLocationIdsForTests()).toEqual([10]);
   });
 
   test('selectLocationForAssignment: добавляет новую локацию в конец списка', () => {

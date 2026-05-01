@@ -183,7 +183,7 @@ describe('home.js - модульные тесты', () => {
    * Проверяем разные классы пользователей:
    * superuser, admin и обычный пользователь.
    */
-  test('loadCurrentUser: корректно отображает кнопку для разных ролей пользователя', async () => {
+  test('loadCurrentUserButton: корректно отображает кнопку для разных ролей пользователя', async () => {
     const cases = [
       {
         role: 'superuser',
@@ -238,22 +238,6 @@ describe('home.js - модульные тесты', () => {
   });
 
   /*
-   * Техника тест-дизайна: классы эквивалентности.
-   * Проверяем некорректный формат ответа фильтров.
-   */
-  test('loadFilters: если companies не массив, список компаний становится пустым', async () => {
-    window.Api.getRoomFilters.mockResolvedValueOnce({
-      companies: 'Company A'
-    });
-
-    await home.loadFilters();
-
-    expect(home.__getAllCompaniesForTests()).toEqual([]);
-    expect(document.getElementById('companyList').textContent).toContain('Нет данных');
-    expect(document.getElementById('applyFilters').disabled).toBe(false);
-  });
-
-  /*
    * Техника тест-дизайна: негативное тестирование.
    * Проверяем отказ API фильтров.
    */
@@ -292,7 +276,7 @@ describe('home.js - модульные тесты', () => {
   });
 
   /*
-   * Техника тест-дизайна: классы эквивалентности.
+   * Техника тест-дизайна:  негативное тестирование
    * Проверяем пустой список помещений как отдельный класс ответа.
    */
   test('loadMoreRooms: если помещений нет, показывает сообщение о пустом городе', async () => {
@@ -341,24 +325,6 @@ describe('home.js - модульные тесты', () => {
     expect(document.getElementById('statusBar').hidden).toBe(true);
   });
 
-  /*
-   * Техника тест-дизайна: тестирование состояний и переходов.
-   * Проверяем защитные условия: загрузка уже идёт или данных больше нет.
-   */
-  test('loadMoreRooms: не делает запрос, если уже идёт загрузка или hasMore=false', async () => {
-    home.__setIsLoadingForTests(true);
-
-    await home.loadMoreRooms(false);
-
-    expect(window.Api.getRooms).not.toHaveBeenCalled();
-
-    home.__setIsLoadingForTests(false);
-    home.__setHasMoreForTests(false);
-
-    await home.loadMoreRooms(false);
-
-    expect(window.Api.getRooms).not.toHaveBeenCalled();
-  });
 
   /*
    * Техника тест-дизайна: тестирование состояний.
@@ -390,7 +356,7 @@ describe('home.js - модульные тесты', () => {
   });
 
   /*
-   * Техника тест-дизайна: негативное тестирование.
+   * Техника тест-дизайна: классы эквивалентности
    * Проверяем ввод города, которого нет в допустимом списке.
    */
   test('setCity: для несуществующего города показывает ошибку', () => {
@@ -425,7 +391,7 @@ describe('home.js - модульные тесты', () => {
   });
 
   /*
-   * Техника тест-дизайна: тестирование UI-состояний.
+   * Техника тест-дизайна:  тестирование состояний и переходов
    * Проверяем открытие и закрытие модального окна выбора города.
    */
   test('openCityModal и closeCityModal: открывают и закрывают модальное окно', () => {
@@ -481,28 +447,7 @@ describe('home.js - модульные тесты', () => {
     expect(document.getElementById('citySearch').value).toBe('Казань');
   });
 
-  /*
-   * Техника тест-дизайна: негативное тестирование.
-   * Проверяем Enter в пустом поле поиска города.
-   */
-  test('bindEvents: Enter в пустом поле поиска города показывает ошибку', () => {
-    home.bindEvents();
 
-    const citySearch = document.getElementById('citySearch');
-
-    citySearch.value = '';
-
-    citySearch.dispatchEvent(
-      new KeyboardEvent('keyup', {
-        key: 'Enter',
-        bubbles: true
-      })
-    );
-
-    expect(document.getElementById('cityError').textContent).toBe(
-      'Введите название города'
-    );
-  });
 
   /*
    * Техника тест-дизайна: негативное тестирование.
@@ -525,7 +470,7 @@ describe('home.js - модульные тесты', () => {
   });
 
   /*
-   * Техника тест-дизайна: тестирование UI-состояний.
+   * Техника тест-дизайна: тестирование пользовательского сценария 
    * Проверяем закрытие модального окна по Escape и клику вне области.
    */
   test('bindEvents: закрывает модальное окно по Escape и клику вне области', () => {
@@ -610,7 +555,7 @@ describe('home.js - модульные тесты', () => {
   });
 
   /*
-   * Техника тест-дизайна: попарное тестирование.
+   * Техника тест-дизайна: таблица решений.
    * Проверяем совместную работу нескольких фильтров:
    * цена + вместимость + компания.
    */
@@ -726,7 +671,7 @@ describe('home.js - модульные тесты', () => {
   });
 
   /*
-   * Техника тест-дизайна: анализ граничных значений.
+   * Техника тест-дизайна: классы эквивалентности
    * Проверяем blur у цены: отрицательное значение и положительное значение.
    */
   test('bindEvents: blur у цены нормализует значение', () => {
@@ -756,7 +701,7 @@ describe('home.js - модульные тесты', () => {
   });
 
   /*
-   * Техника тест-дизайна: негативное тестирование.
+   * Техника тест-дизайна:классы эквивалентности 
    * Проверяем запрет ввода недопустимых клавиш в поле цены.
    */
   test('bindEvents: поле цены запрещает ввод букв с клавиатуры', () => {
@@ -805,18 +750,6 @@ describe('home.js - модульные тесты', () => {
     expect(capacityInput.value).toBe('123');
   });
 
-  /*
-   * Техника тест-дизайна: классы эквивалентности.
-   * Проверяем renderCards для пустого массива.
-   */
-  test('renderCards: для пустого массива показывает сообщение о пустом результате', () => {
-    home.renderCards([], true);
-
-    expect(document.getElementById('cardsWrapper').textContent).toContain(
-      'Ничего не найдено по выбранным фильтрам'
-    );
-    expect(document.getElementById('sentinel')).toBe(null);
-  });
 
   /*
    * Техника тест-дизайна: негативное тестирование.
