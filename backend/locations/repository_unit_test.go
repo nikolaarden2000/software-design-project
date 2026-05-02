@@ -69,7 +69,7 @@ func existsLocationByIDQuery() string {
 
 // Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
 // Проверяем получение списка локаций без фильтров.
-func TestListLocations_Scenario_SuccessWithoutFilters(t *testing.T) {
+func TestListLocations_EquivalenceClasses_SuccessWithoutFilters(t *testing.T) {
 	mock := newLocationsMock(t)
 	repo := newLocationsRepo(mock)
 
@@ -153,9 +153,9 @@ func TestListLocations_EquivalenceClasses_EmptyResultReturnsEmptySlice(t *testin
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
+// Техника тест-дизайна: Предугадывание ошибок.
 // Проверяем, что ошибка запроса списка локаций возвращается вызывающему коду.
-func TestListLocations_ExceptionHandling_QueryErrorPropagates(t *testing.T) {
+func TestListLocations_ErrorGuessing_QueryErrorPropagates(t *testing.T) {
 	mock := newLocationsMock(t)
 	repo := newLocationsRepo(mock)
 
@@ -174,9 +174,9 @@ func TestListLocations_ExceptionHandling_QueryErrorPropagates(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
+// Техника тест-дизайна: Предугадывание ошибок.
 // Проверяем, что ошибка сканирования строки списка локаций возвращается вызывающему коду.
-func TestListLocations_ExceptionHandling_ScanErrorPropagates(t *testing.T) {
+func TestListLocations_ErrorGuessing_ScanErrorPropagates(t *testing.T) {
 	mock := newLocationsMock(t)
 	repo := newLocationsRepo(mock)
 
@@ -246,7 +246,7 @@ func TestListAdminLocations_DecisionTable_AdminIDValidationAndIncludeAll(t *test
 
 // Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
 // Проверяем успешное получение локаций, доступных администратору.
-func TestListAdminLocations_Scenario_Success(t *testing.T) {
+func TestListAdminLocations_EquivalenceClasses_ValidAdminReturnsLocations(t *testing.T) {
 	mock := newLocationsMock(t)
 	repo := newLocationsRepo(mock)
 
@@ -275,9 +275,9 @@ func TestListAdminLocations_Scenario_Success(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
+// Техника тест-дизайна: Предугадывание ошибок.
 // Проверяем, что ошибка запроса admin-локаций возвращается вызывающему коду.
-func TestListAdminLocations_ExceptionHandling_QueryErrorPropagates(t *testing.T) {
+func TestListAdminLocations_ErrorGuessing_QueryErrorPropagates(t *testing.T) {
 	mock := newLocationsMock(t)
 	repo := newLocationsRepo(mock)
 
@@ -293,9 +293,9 @@ func TestListAdminLocations_ExceptionHandling_QueryErrorPropagates(t *testing.T)
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
+// Техника тест-дизайна: Предугадывание ошибок.
 // Проверяем, что ошибка сканирования строки admin-локации возвращается вызывающему коду.
-func TestListAdminLocations_ExceptionHandling_ScanErrorPropagates(t *testing.T) {
+func TestListAdminLocations_ErrorGuessing_ScanErrorPropagates(t *testing.T) {
 	mock := newLocationsMock(t)
 	repo := newLocationsRepo(mock)
 
@@ -536,9 +536,9 @@ func TestCreateLocation_DecisionTable_TimezoneSelection(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
+// Техника тест-дизайна: Предугадывание ошибок.
 // Проверяем, что ошибка INSERT при создании локации возвращается вызывающему коду.
-func TestCreateLocation_ExceptionHandling_InsertErrorPropagates(t *testing.T) {
+func TestCreateLocation_ErrorGuessing_InsertErrorPropagates(t *testing.T) {
 	mock := newLocationsMock(t)
 	repo := newLocationsRepo(mock)
 
@@ -562,9 +562,9 @@ func TestCreateLocation_ExceptionHandling_InsertErrorPropagates(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
+// Техника тест-дизайна: Предугадывание ошибок.
 // Проверяем, что ошибка последующего GetLocationByID после INSERT возвращается вызывающему коду.
-func TestCreateLocation_ExceptionHandling_GetCreatedLocationErrorPropagates(t *testing.T) {
+func TestCreateLocation_ErrorGuessing_GetCreatedLocationErrorPropagates(t *testing.T) {
 	mock := newLocationsMock(t)
 	repo := newLocationsRepo(mock)
 
@@ -618,7 +618,7 @@ func TestGetLocationByID_BoundaryValues_InvalidIDsReturnErrInvalidID(t *testing.
 
 // Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
 // Проверяем успешное получение локации по id.
-func TestGetLocationByID_Scenario_Success(t *testing.T) {
+func TestGetLocationByID_EquivalenceClasses_Found(t *testing.T) {
 	mock := newLocationsMock(t)
 	repo := newLocationsRepo(mock)
 
@@ -656,9 +656,9 @@ func TestGetLocationByID_EquivalenceClasses_NotFoundReturnsErrNotFound(t *testin
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
+// Техника тест-дизайна: Предугадывание ошибок.
 // Проверяем, что ошибка запроса локации по id возвращается вызывающему коду.
-func TestGetLocationByID_ExceptionHandling_QueryErrorPropagates(t *testing.T) {
+func TestGetLocationByID_ErrorGuessing_QueryErrorPropagates(t *testing.T) {
 	mock := newLocationsMock(t)
 	repo := newLocationsRepo(mock)
 
@@ -674,9 +674,9 @@ func TestGetLocationByID_ExceptionHandling_QueryErrorPropagates(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
+// Техника тест-дизайна: Предугадывание ошибок.
 // Проверяем, что ошибка сканирования локации по id возвращается вызывающему коду.
-func TestGetLocationByID_ExceptionHandling_ScanErrorPropagates(t *testing.T) {
+func TestGetLocationByID_ErrorGuessing_ScanErrorPropagates(t *testing.T) {
 	mock := newLocationsMock(t)
 	repo := newLocationsRepo(mock)
 
@@ -755,9 +755,9 @@ func TestExistsByID_EquivalenceClasses_ExistsAndNotExists(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
+// Техника тест-дизайна: Предугадывание ошибок.
 // Проверяем, что ошибка запроса ExistsByID возвращается вызывающему коду.
-func TestExistsByID_ExceptionHandling_DBErrorPropagates(t *testing.T) {
+func TestExistsByID_ErrorGuessing_DBErrorPropagates(t *testing.T) {
 	mock := newLocationsMock(t)
 	repo := newLocationsRepo(mock)
 

@@ -75,7 +75,7 @@ func TestWriteJSON_DecisionTable_StatusAndBodyBehavior(t *testing.T) {
 
 // Техника тест-дизайна: сценарное тестирование, негативный сценарий.
 // Проверяем запись JSON-ответа с error.
-func TestWriteError_Scenario_WritesErrorResponse(t *testing.T) {
+func TestWriteError_EquivalenceClasses_WritesErrorResponse(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	WriteError(w, http.StatusBadRequest, "invalid_request", "Некорректный запрос")

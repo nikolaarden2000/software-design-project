@@ -274,7 +274,7 @@ func readServerError(t *testing.T, w *httptest.ResponseRecorder) *httpapi.APIErr
 
 // Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
 // Проверяем преобразование внутренней модели пользователя в DTO без password_hash.
-func TestToUserDTO_Scenario_MapsPublicFields(t *testing.T) {
+func TestToUserDTO_EquivalenceClasses_MapsPublicFields(t *testing.T) {
 	u := &users.User{
 		ID:       7,
 		Username: "alice",
@@ -646,7 +646,7 @@ func TestRoomsHandler_DecisionTable_RepoErrors(t *testing.T) {
 
 // Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
 // Проверяем получение фильтров каталога по городу.
-func TestRoomFiltersHandler_Scenario_Success(t *testing.T) {
+func TestRoomFiltersHandler_EquivalenceClasses_ExplicitCity(t *testing.T) {
 	roomRepo := &testRoomRepo{
 		getCompaniesByCity: func(_ context.Context, city string) ([]string, error) {
 			if city != "Казань" {
@@ -674,7 +674,7 @@ func TestRoomFiltersHandler_Scenario_Success(t *testing.T) {
 
 // Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
 // Проверяем получение публичной карточки комнаты.
-func TestRoomDetailsHandler_Scenario_Success(t *testing.T) {
+func TestRoomDetailsHandler_EquivalenceClasses_Found(t *testing.T) {
 	roomRepo := &testRoomRepo{
 		getRoomPageData: func(_ context.Context, roomID int) (*rooms.RoomPageData, error) {
 			if roomID != 10 {

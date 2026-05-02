@@ -56,7 +56,7 @@ func TestParsePositiveInt_BoundaryValues(t *testing.T) {
 
 // Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
 // Проверяем успешный разбор path-параметра id.
-func TestParsePathID_Scenario_ValidID(t *testing.T) {
+func TestParsePathID_EquivalenceClasses_ValidID(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/api/rooms/10", nil)
 	req.SetPathValue("room_id", "10")
 	w := httptest.NewRecorder()
@@ -233,7 +233,7 @@ func TestOptionalStringQuery_EquivalenceClasses(t *testing.T) {
 
 // Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
 // Проверяем успешное получение текущего пользователя из контекста запроса.
-func TestCurrentUserFromRequest_Scenario_UserExists(t *testing.T) {
+func TestCurrentUserFromRequest_EquivalenceClasses_UserExists(t *testing.T) {
 	wantUser := &users.User{
 		ID:       7,
 		Username: "admin",

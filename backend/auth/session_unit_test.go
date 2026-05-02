@@ -27,7 +27,7 @@ func seedSession(sm *SessionManager, id string, userID int, expiresAt time.Time)
 
 // Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
 // Проверяем, что Create создаёт сессию с непустым hex-идентификатором, корректным userID и ожидаемым сроком действия.
-func TestCreate_Scenario_StoresSessionWithExpectedFields(t *testing.T) {
+func TestCreate_EquivalenceClasses_StoresSessionWithExpectedFields(t *testing.T) {
 	ttl := time.Hour
 	sm := newTestSM(ttl)
 
@@ -241,7 +241,7 @@ func TestDelete_EquivalenceClasses(t *testing.T) {
 
 // Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
 // Проверяем, что Stop завершает работу cleanupLoop без блокировки.
-func TestStop_Scenario_CleanupLoopTerminates(t *testing.T) {
+func TestStop_StateTransition_CleanupLoopTerminates(t *testing.T) {
 	sm := NewSessionManager(time.Hour, 10*time.Millisecond)
 
 	done := make(chan struct{})

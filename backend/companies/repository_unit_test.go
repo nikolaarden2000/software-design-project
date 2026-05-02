@@ -39,7 +39,7 @@ func companyColumns() []string {
 
 // Техника тест-дизайна: Сценарное тестирование (Use Case Testing).
 // Проверяем позитивный сценарий: успешное получение списка компаний вместе с количеством локаций.
-func TestListCompanies_UseCase_Success(t *testing.T) {
+func TestListCompanies_EquivalencePartitioning_NonEmptyResult(t *testing.T) {
 	mock := newCompaniesMock(t)
 	repo := newCompaniesRepo(mock)
 

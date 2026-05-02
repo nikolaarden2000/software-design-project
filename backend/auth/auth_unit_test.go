@@ -276,9 +276,9 @@ func TestRegister_EquivalenceClasses_EmailAlreadyTakenReturnsErrEmailExists(t *t
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
+// Техника тест-дизайна: Предугадывание ошибок.
 // Проверяем, что ошибка проверки уникальности email возвращается вызывающему коду.
-func TestRegister_ExceptionHandling_IsEmailTakenErrorPropagates(t *testing.T) {
+func TestRegister_ErrorGuessing_IsEmailTakenErrorPropagates(t *testing.T) {
 	dbErr := fmt.Errorf("connection lost")
 	repo := &mockRepo{
 		isEmailTaken: func(_ context.Context, _ string) (bool, error) {
@@ -411,9 +411,9 @@ func TestRegisterWithRole_EquivalenceClasses_InvalidRole(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
+// Техника тест-дизайна: Предугадывание ошибок.
 // Проверяем, что ошибка CreateUserWithRole возвращается вызывающему коду.
-func TestRegisterWithRole_ExceptionHandling_CreateUserWithRoleErrorPropagates(t *testing.T) {
+func TestRegisterWithRole_ErrorGuessing_CreateUserWithRoleErrorPropagates(t *testing.T) {
 	createErr := fmt.Errorf("insert failed")
 
 	repo := &mockRepo{
@@ -464,9 +464,9 @@ func TestLogin_InputValidationEquivalenceClasses_NoDBCalls(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
+// Техника тест-дизайна: Предугадывание ошибок.
 // Проверяем, что ошибка поиска пользователя возвращается вызывающему коду.
-func TestLogin_ExceptionHandling_UserLookupErrorPropagates(t *testing.T) {
+func TestLogin_ErrorGuessing_UserLookupErrorPropagates(t *testing.T) {
 	dbErr := fmt.Errorf("user not found")
 	repo := &mockRepo{
 		getUserByEmail: func(_ context.Context, _ string) (*users.User, error) {
@@ -500,9 +500,9 @@ func TestLogin_EquivalenceClasses_WrongPasswordReturnsInvalidCredentials(t *test
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
+// Техника тест-дизайна: Предугадывание ошибок.
 // Проверяем поведение при повреждённом сохранённом хеше.
-func TestLogin_ExceptionHandling_CorruptedStoredHashReturnsError(t *testing.T) {
+func TestLogin_ErrorGuessing_CorruptedStoredHashReturnsError(t *testing.T) {
 	repo := &mockRepo{
 		getUserByEmail: func(_ context.Context, email string) (*users.User, error) {
 			return &users.User{ID: 1, Email: email, Password: "corrupted-hash"}, nil

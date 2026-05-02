@@ -159,7 +159,7 @@ func TestAdminLocationsHandler_EquivalenceClasses_Unauthorized(t *testing.T) {
 
 // Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
 // Проверяем список помещений администратора с фильтрами location_id и status.
-func TestAdminRoomsHandler_Scenario_SuccessWithFilters(t *testing.T) {
+func TestAdminRoomsHandler_EquivalenceClasses_SuccessWithFilters(t *testing.T) {
 	roomRepo := &testRoomRepo{
 		listAdminRooms: func(_ context.Context, adminID int, includeAll bool, locationID *int, status *string) ([]rooms.AdminRoomListItem, error) {
 			if adminID != 7 || includeAll {
@@ -229,7 +229,7 @@ func TestAdminRoomsHandler_DecisionTable_RepoErrors(t *testing.T) {
 
 // Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
 // Проверяем получение admin-карточки помещения.
-func TestAdminRoomDetailsHandler_Scenario_Success(t *testing.T) {
+func TestAdminRoomDetailsHandler_EquivalenceClasses_Found(t *testing.T) {
 	roomRepo := &testRoomRepo{
 		getAdminRoom: func(_ context.Context, adminID int, includeAll bool, roomID int) (*rooms.AdminRoomDetails, error) {
 			if adminID != 7 || includeAll || roomID != 100 {
@@ -313,7 +313,7 @@ func TestUpdateAdminRoomHandler_Scenario_Success(t *testing.T) {
 
 // Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
 // Проверяем отправку помещения на модерацию.
-func TestSubmitAdminRoomHandler_Scenario_Success(t *testing.T) {
+func TestSubmitAdminRoomHandler_StateTransitions_SubmitMovesRoomToPending(t *testing.T) {
 	roomRepo := &testRoomRepo{
 		submitAdminRoom: func(_ context.Context, adminID int, includeAll bool, roomID int) error {
 			if adminID != 7 || includeAll || roomID != 100 {
@@ -343,7 +343,7 @@ func TestSubmitAdminRoomHandler_Scenario_Success(t *testing.T) {
 
 // Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
 // Проверяем архивирование помещения администратором.
-func TestArchiveAdminRoomHandler_Scenario_Success(t *testing.T) {
+func TestArchiveAdminRoomHandler_StateTransitions_ArchiveMovesRoomToArchived(t *testing.T) {
 	roomRepo := &testRoomRepo{
 		archiveAdminRoom: func(_ context.Context, adminID int, includeAll bool, roomID int, mode string, _ time.Time) (*rooms.AdminRoomArchiveResult, error) {
 			if adminID != 7 || includeAll || roomID != 100 || mode != rooms.ArchiveModeImmediate {
@@ -413,7 +413,7 @@ func TestArchiveAdminRoomHandler_DecisionTable_RepoErrors(t *testing.T) {
 
 // Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
 // Проверяем список бронирований администратора с фильтрами.
-func TestAdminBookingsHandler_Scenario_SuccessWithFilters(t *testing.T) {
+func TestAdminBookingsHandler_EquivalenceClasses_SuccessWithFilters(t *testing.T) {
 	bookingRepo := &testBookingRepo{
 		listAdminBookings: func(_ context.Context, adminID int, includeAll bool, locationID *int, roomID *int, status *string, _ time.Time) ([]bookings.AdminBookingItem, error) {
 			if adminID != 7 || includeAll {
@@ -445,7 +445,7 @@ func TestAdminBookingsHandler_Scenario_SuccessWithFilters(t *testing.T) {
 
 // Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
 // Проверяем отмену бронирования администратором.
-func TestCancelAdminBookingHandler_Scenario_Success(t *testing.T) {
+func TestCancelAdminBookingHandler_StateTransitions_CancelMovesBookingToCanceled(t *testing.T) {
 	bookingRepo := &testBookingRepo{
 		cancelAdminBooking: func(_ context.Context, adminID int, includeAll bool, bookingID int, _ time.Time) error {
 			if adminID != 7 || includeAll || bookingID != 500 {

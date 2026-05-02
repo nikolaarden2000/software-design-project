@@ -82,7 +82,7 @@ func newSuperuserHandlersTestServer(authSvc AuthService, userRepo UserRepo, comp
 
 // Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
 // Проверяем получение списка компаний.
-func TestListCompaniesHandler_Scenario_Success(t *testing.T) {
+func TestListCompaniesHandler_EquivalenceClasses_NonEmptyResult(t *testing.T) {
 	companyRepo := &testCompanyRepo{
 		listCompanies: func(context.Context) ([]companies.Company, error) {
 			return []companies.Company{{ID: 1, Name: "Company A", LocationsCount: 2}}, nil
@@ -259,7 +259,7 @@ func TestCreateLocationHandler_EquivalenceClasses_CompanyNotFound(t *testing.T) 
 
 // Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
 // Проверяем получение списка администраторов.
-func TestListAdminsHandler_Scenario_Success(t *testing.T) {
+func TestListAdminsHandler_EquivalenceClasses_NonEmptyResult(t *testing.T) {
 	userRepo := &testUserRepo{
 		listAdmins: func(context.Context) ([]users.Admin, error) {
 			return []users.Admin{{ID: 7, Username: "admin", Email: "admin@example.com", Role: users.RoleAdmin}}, nil
@@ -447,7 +447,7 @@ func TestDeleteAdminLocationAssignmentHandler_Scenario_Success(t *testing.T) {
 
 // Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
 // Проверяем получение помещений на модерации.
-func TestModerationRoomsHandler_Scenario_Success(t *testing.T) {
+func TestModerationRoomsHandler_EquivalenceClasses_NonEmptyResult(t *testing.T) {
 	roomRepo := &testRoomRepo{
 		listModerationRooms: func(context.Context) ([]rooms.ModerationRoom, error) {
 			return []rooms.ModerationRoom{{ID: 100, Title: "Room A", Status: rooms.StatusPending}}, nil
@@ -467,7 +467,7 @@ func TestModerationRoomsHandler_Scenario_Success(t *testing.T) {
 
 // Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
 // Проверяем одобрение помещения.
-func TestApproveRoomHandler_Scenario_Success(t *testing.T) {
+func TestApproveRoomHandler_StateTransitions_ApprovePublishesRoom(t *testing.T) {
 	roomRepo := &testRoomRepo{
 		approveRoom: func(_ context.Context, roomID int) error {
 			if roomID != 100 {
@@ -496,7 +496,7 @@ func TestApproveRoomHandler_Scenario_Success(t *testing.T) {
 
 // Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
 // Проверяем отклонение помещения.
-func TestRejectRoomHandler_Scenario_Success(t *testing.T) {
+func TestRejectRoomHandler_StateTransitions_RejectMovesRoomToRejected(t *testing.T) {
 	roomRepo := &testRoomRepo{
 		rejectRoom: func(_ context.Context, roomID int, reason string) error {
 			if roomID != 100 || reason != "bad photos" {
@@ -525,7 +525,7 @@ func TestRejectRoomHandler_Scenario_Success(t *testing.T) {
 
 // Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
 // Проверяем архивирование помещения суперпользователем.
-func TestArchiveRoomHandler_Scenario_Success(t *testing.T) {
+func TestArchiveRoomHandler_StateTransitions_ArchiveMovesRoomToArchived(t *testing.T) {
 	roomRepo := &testRoomRepo{
 		archiveRoom: func(_ context.Context, roomID int) error {
 			if roomID != 100 {

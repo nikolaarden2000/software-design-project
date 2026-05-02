@@ -128,7 +128,7 @@ func TestCreateUserWithRole_EquivalenceClasses_ValidAndInvalidRole(t *testing.T)
 	}
 }
 
-// Техника тест-дизайна: предугадывание ошибок + обработка исключений.
+// Техника тест-дизайна: ErrorGuessing_дывание ошибок + Предугадывание ошибок.
 // Проверяем типичные операционные сбои: конфликт по email и произвольная ошибка БД.
 func TestCreateUserWithRole_ErrorGuessingAndExceptionHandling(t *testing.T) {
 	dbErr := fmt.Errorf("insert failed")
@@ -221,9 +221,9 @@ func TestGetUserByEmail_EquivalenceClasses_FoundAndNotFound(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
+// Техника тест-дизайна: Предугадывание ошибок.
 // Проверяем, что ошибка БД при поиске по email пробрасывается без потери.
-func TestGetUserByEmail_ExceptionHandling_DBErrorPropagates(t *testing.T) {
+func TestGetUserByEmail_ErrorGuessing_DBErrorPropagates(t *testing.T) {
 	mock := newMock(t)
 	repo := newUserRepo(mock)
 	dbErr := fmt.Errorf("timeout")
@@ -315,9 +315,9 @@ func TestGetUserByID_BoundaryValues_InvalidIDsReturnErrInvalidID(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
+// Техника тест-дизайна: Предугадывание ошибок.
 // Проверяем, что ошибка базы данных при поиске по id возвращается вызывающему коду.
-func TestGetUserByID_ExceptionHandling_DBErrorPropagates(t *testing.T) {
+func TestGetUserByID_ErrorGuessing_DBErrorPropagates(t *testing.T) {
 	mock := newMock(t)
 	repo := newUserRepo(mock)
 
@@ -366,9 +366,9 @@ func TestIsEmailTaken_EquivalenceClasses(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
+// Техника тест-дизайна: Предугадывание ошибок.
 // Проверяем, что ошибка базы данных при проверке email возвращается вызывающему коду.
-func TestIsEmailTaken_ExceptionHandling_DBErrorPropagates(t *testing.T) {
+func TestIsEmailTaken_ErrorGuessing_DBErrorPropagates(t *testing.T) {
 	mock := newMock(t)
 	repo := newUserRepo(mock)
 
@@ -462,9 +462,9 @@ func TestListAdminLocations_EquivalenceClasses_EmptyResultReturnsEmptySlice(t *t
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
+// Техника тест-дизайна: Предугадывание ошибок.
 // Проверяем, что ошибка базы данных при получении локаций администратора возвращается вызывающему коду.
-func TestListAdminLocations_ExceptionHandling_DBErrorPropagates(t *testing.T) {
+func TestListAdminLocations_ErrorGuessing_DBErrorPropagates(t *testing.T) {
 	mock := newMock(t)
 	repo := newUserRepo(mock)
 
@@ -548,9 +548,9 @@ func TestListAdmins_EquivalenceClasses_EmptyResultReturnsEmptySlice(t *testing.T
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
+// Техника тест-дизайна: Предугадывание ошибок.
 // Проверяем ошибку основного запроса списка администраторов.
-func TestListAdmins_ExceptionHandling_ListAdminsDBErrorPropagates(t *testing.T) {
+func TestListAdmins_ErrorGuessing_ListAdminsDBErrorPropagates(t *testing.T) {
 	mock := newMock(t)
 	repo := newUserRepo(mock)
 
@@ -565,9 +565,9 @@ func TestListAdmins_ExceptionHandling_ListAdminsDBErrorPropagates(t *testing.T) 
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
+// Техника тест-дизайна: Предугадывание ошибок.
 // Проверяем ошибку вложенного запроса локаций администратора.
-func TestListAdmins_ExceptionHandling_ListAdminLocationsDBErrorPropagates(t *testing.T) {
+func TestListAdmins_ErrorGuessing_ListAdminLocationsDBErrorPropagates(t *testing.T) {
 	mock := newMock(t)
 	repo := newUserRepo(mock)
 
@@ -671,9 +671,9 @@ func TestAssignAdminToLocation_EquivalenceClasses_RoleValidation(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
+// Техника тест-дизайна: Предугадывание ошибок.
 // Проверяем, что ошибка GetUserByID при назначении администратора возвращается вызывающему коду.
-func TestAssignAdminToLocation_ExceptionHandling_GetUserByIDErrorPropagates(t *testing.T) {
+func TestAssignAdminToLocation_ErrorGuessing_GetUserByIDErrorPropagates(t *testing.T) {
 	mock := newMock(t)
 	repo := newUserRepo(mock)
 
@@ -794,9 +794,9 @@ func TestDeleteAdminLocationAssignment_EquivalenceClasses_RowsAffected(t *testin
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
+// Техника тест-дизайна: Предугадывание ошибок.
 // Проверяем, что ошибка базы данных при удалении назначения возвращается вызывающему коду.
-func TestDeleteAdminLocationAssignment_ExceptionHandling_DBErrorPropagates(t *testing.T) {
+func TestDeleteAdminLocationAssignment_ErrorGuessing_DBErrorPropagates(t *testing.T) {
 	mock := newMock(t)
 	repo := newUserRepo(mock)
 

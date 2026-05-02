@@ -152,9 +152,9 @@ func TestGetRoomAvailability_EquivalenceClasses_RoomNotFoundReturnsErrNotFound(t
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
+// Техника тест-дизайна: Предугадывание ошибок.
 // Проверяем, что некорректный timezone комнаты возвращается как ошибка.
-func TestGetRoomAvailability_ExceptionHandling_InvalidTimezoneReturnsError(t *testing.T) {
+func TestGetRoomAvailability_ErrorGuessing_InvalidTimezoneReturnsError(t *testing.T) {
 	mock := newMock(t)
 	availFrom := time.Date(0, 1, 1, 9, 0, 0, 0, time.UTC)
 	availTo := time.Date(0, 1, 1, 18, 0, 0, 0, time.UTC)
@@ -170,9 +170,9 @@ func TestGetRoomAvailability_ExceptionHandling_InvalidTimezoneReturnsError(t *te
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
+// Техника тест-дизайна: Предугадывание ошибок.
 // Проверяем, что ошибка запроса окна доступности комнаты возвращается вызывающему коду.
-func TestGetRoomAvailability_ExceptionHandling_RoomQueryErrorPropagates(t *testing.T) {
+func TestGetRoomAvailability_ErrorGuessing_RoomQueryErrorPropagates(t *testing.T) {
 	mock := newMock(t)
 	dbErr := fmt.Errorf("timeout")
 
@@ -211,7 +211,7 @@ func TestGetRoomAvailability_BoundaryValues_DefaultDaysWhenZero(t *testing.T) {
 
 // Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
 // Проверяем формирование всех доступных слотов при обычном окне доступности без бронирований.
-func TestGetRoomAvailability_Scenario_NormalWindowNoBookingsAllSlotsAvailable(t *testing.T) {
+func TestGetRoomAvailability_EquivalenceClasses_NoBookingsAllSlotsAvailable(t *testing.T) {
 	mock := newMock(t)
 	now := fixed(8)
 	endDate := time.Date(2024, 1, 16, 0, 0, 0, 0, time.UTC)
@@ -236,7 +236,7 @@ func TestGetRoomAvailability_Scenario_NormalWindowNoBookingsAllSlotsAvailable(t 
 
 // Техника тест-дизайна: сценарное тестирование.
 // Проверяем, что слоты текущего дня, которые уже прошли, исключаются из доступности.
-func TestGetRoomAvailability_Scenario_PastSlotsTodayAreFiltered(t *testing.T) {
+func TestGetRoomAvailability_EquivalenceClasses_PastSlotsTodayAreFiltered(t *testing.T) {
 	mock := newMock(t)
 	now := fixed(14)
 	endDate := time.Date(2024, 1, 16, 0, 0, 0, 0, time.UTC)
@@ -263,7 +263,7 @@ func TestGetRoomAvailability_Scenario_PastSlotsTodayAreFiltered(t *testing.T) {
 
 // Техника тест-дизайна: сценарное тестирование.
 // Проверяем, что существующее бронирование блокирует пересекающиеся слоты.
-func TestGetRoomAvailability_Scenario_BookingBlocksSlots(t *testing.T) {
+func TestGetRoomAvailability_EquivalenceClasses_BookingBlocksSlots(t *testing.T) {
 	mock := newMock(t)
 	now := fixed(8)
 	endDate := time.Date(2024, 1, 16, 0, 0, 0, 0, time.UTC)
@@ -300,7 +300,7 @@ func TestGetRoomAvailability_Scenario_BookingBlocksSlots(t *testing.T) {
 
 // Техника тест-дизайна: сценарное тестирование.
 // Проверяем обработку нескольких бронирований при расчёте доступных слотов.
-func TestGetRoomAvailability_Scenario_MultipleBookingsBlockSlots(t *testing.T) {
+func TestGetRoomAvailability_EquivalenceClasses_MultipleBookingsBlockSlots(t *testing.T) {
 	mock := newMock(t)
 	now := fixed(8)
 	endDate := time.Date(2024, 1, 16, 0, 0, 0, 0, time.UTC)
@@ -330,9 +330,9 @@ func TestGetRoomAvailability_Scenario_MultipleBookingsBlockSlots(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
+// Техника тест-дизайна: Предугадывание ошибок.
 // Проверяем, что ошибка запроса бронирований для расчёта доступности возвращается вызывающему коду.
-func TestGetRoomAvailability_ExceptionHandling_BookingsQueryErrorPropagates(t *testing.T) {
+func TestGetRoomAvailability_ErrorGuessing_BookingsQueryErrorPropagates(t *testing.T) {
 	mock := newMock(t)
 	now := fixed(8)
 	dbErr := fmt.Errorf("connection reset")
@@ -384,9 +384,9 @@ func TestCreateBooking_Scenario_Success(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
+// Техника тест-дизайна: Предугадывание ошибок.
 // Проверяем преобразование ошибки пересечения бронирований в db.ErrConflict.
-func TestCreateBooking_ExceptionHandling_OverlapConflictReturnsErrConflict(t *testing.T) {
+func TestCreateBooking_ErrorGuessing_OverlapConflictReturnsErrConflict(t *testing.T) {
 	mock := newMock(t)
 	now := fixed(8)
 
@@ -434,9 +434,9 @@ func TestCreateBooking_EquivalenceClasses_RoomNotFoundOnTimezoneQueryReturnsErrN
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
+// Техника тест-дизайна: Предугадывание ошибок.
 // Проверяем ошибку при некорректном timezone, полученном из базы данных.
-func TestCreateBooking_ExceptionHandling_InvalidTimezoneFromDBReturnsError(t *testing.T) {
+func TestCreateBooking_ErrorGuessing_InvalidTimezoneFromDBReturnsError(t *testing.T) {
 	mock := newMock(t)
 
 	mock.ExpectQuery(regexp.QuoteMeta(queryGetRoomTimezone)).
@@ -481,9 +481,9 @@ func TestCreateBooking_EquivalenceClasses_PastStartTimeReturnsErrInvalidArgument
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
+// Техника тест-дизайна: Предугадывание ошибок.
 // Проверяем, что обычная ошибка базы данных при создании бронирования возвращается вызывающему коду.
-func TestCreateBooking_ExceptionHandling_DBErrorPropagates(t *testing.T) {
+func TestCreateBooking_ErrorGuessing_DBErrorPropagates(t *testing.T) {
 	mock := newMock(t)
 	dbErr := fmt.Errorf("connection timeout")
 	now := fixed(8)
@@ -606,7 +606,7 @@ func TestCreateBooking_InputValidationEquivalenceClasses_NoDBCalls(t *testing.T)
 
 // Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
 // Проверяем успешную отмену бронирования в статусе booked.
-func TestCancelBooking_Scenario_BookedStatusSuccess(t *testing.T) {
+func TestCancelBooking_StateTransitions_BookedCanBeCanceled(t *testing.T) {
 	mock := newMock(t)
 	now := fixed(8)
 
@@ -674,9 +674,9 @@ func TestCancelBooking_EquivalenceClasses_NotFoundReturnsErrNotFound(t *testing.
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
+// Техника тест-дизайна: Предугадывание ошибок.
 // Проверяем, что ошибка запроса бронирования для отмены возвращается вызывающему коду.
-func TestCancelBooking_ExceptionHandling_DBErrorPropagates(t *testing.T) {
+func TestCancelBooking_ErrorGuessing_DBErrorPropagates(t *testing.T) {
 	mock := newMock(t)
 	dbErr := fmt.Errorf("connection reset")
 
@@ -720,7 +720,7 @@ func TestCancelBooking_BoundaryValues_InvalidIDsReturnErrInvalidID(t *testing.T)
 
 // Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
 // Проверяем получение истории бронирований пользователя с форматированием времени в timezone комнаты.
-func TestGetUserBookings_Scenario_TimesFormattedInRoomTimezone(t *testing.T) {
+func TestGetUserBookings_EquivalenceClasses_ValidTimezoneFormatsTimes(t *testing.T) {
 	mock := newMock(t)
 	now := fixed(6)
 
@@ -768,9 +768,9 @@ func TestGetUserBookings_EquivalenceClasses_NoBookingsReturnsEmptySlice(t *testi
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
+// Техника тест-дизайна: Предугадывание ошибок.
 // Проверяем, что ошибка запроса истории бронирований пользователя возвращается вызывающему коду.
-func TestGetUserBookings_ExceptionHandling_DBErrorPropagates(t *testing.T) {
+func TestGetUserBookings_ErrorGuessing_DBErrorPropagates(t *testing.T) {
 	mock := newMock(t)
 	dbErr := fmt.Errorf("connection refused")
 
@@ -785,9 +785,9 @@ func TestGetUserBookings_ExceptionHandling_DBErrorPropagates(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
+// Техника тест-дизайна: Предугадывание ошибок.
 // Проверяем ошибку при некорректном timezone в строке истории бронирований пользователя.
-func TestGetUserBookings_ExceptionHandling_InvalidTimezoneInRowReturnsError(t *testing.T) {
+func TestGetUserBookings_ErrorGuessing_InvalidTimezoneInRowReturnsError(t *testing.T) {
 	mock := newMock(t)
 	start := fixed(10)
 	end := fixed(11)
@@ -922,7 +922,7 @@ func TestListAdminBookings_EquivalenceClasses_InvalidStatusReturnsErrInvalidArgu
 
 // Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
 // Проверяем успешное получение списка бронирований администратора с фильтрами locationID, roomID и status.
-func TestListAdminBookings_Scenario_SuccessWithFilters(t *testing.T) {
+func TestListAdminBookings_EquivalenceClasses_SuccessWithFilters(t *testing.T) {
 	mock := newMock(t)
 	repo := newBookingRepo(mock)
 	now := fixed(6)
@@ -981,7 +981,7 @@ func TestListAdminBookings_EquivalenceClasses_EmptyResultReturnsEmptySlice(t *te
 
 // Техника тест-дизайна: сценарное тестирование.
 // Проверяем, что фильтр in_use применяется после вычисления фактического статуса бронирования.
-func TestListAdminBookings_Scenario_StatusFilterUsesResolvedStatus(t *testing.T) {
+func TestListAdminBookings_StateTransitions_StatusFilterUsesResolvedStatus(t *testing.T) {
 	mock := newMock(t)
 	repo := newBookingRepo(mock)
 
@@ -1015,7 +1015,7 @@ func TestListAdminBookings_Scenario_StatusFilterUsesResolvedStatus(t *testing.T)
 
 // Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
 // Проверяем, что суперпользователь может получить список при includeAll=true и adminID=0.
-func TestListAdminBookings_Scenario_IncludeAllAllowsZeroAdminID(t *testing.T) {
+func TestListAdminBookings_DecisionTable_IncludeAllAllowsZeroAdminID(t *testing.T) {
 	mock := newMock(t)
 	repo := newBookingRepo(mock)
 
@@ -1036,9 +1036,9 @@ func TestListAdminBookings_Scenario_IncludeAllAllowsZeroAdminID(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
+// Техника тест-дизайна: Предугадывание ошибок.
 // Проверяем, что ошибка запроса списка бронирований администратора возвращается вызывающему коду.
-func TestListAdminBookings_ExceptionHandling_QueryErrorPropagates(t *testing.T) {
+func TestListAdminBookings_ErrorGuessing_QueryErrorPropagates(t *testing.T) {
 	mock := newMock(t)
 	repo := newBookingRepo(mock)
 
@@ -1054,9 +1054,9 @@ func TestListAdminBookings_ExceptionHandling_QueryErrorPropagates(t *testing.T) 
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
+// Техника тест-дизайна: Предугадывание ошибок.
 // Проверяем, что ошибка сканирования строки списка бронирований администратора возвращается вызывающему коду.
-func TestListAdminBookings_ExceptionHandling_ScanErrorPropagates(t *testing.T) {
+func TestListAdminBookings_ErrorGuessing_ScanErrorPropagates(t *testing.T) {
 	mock := newMock(t)
 	repo := newBookingRepo(mock)
 
@@ -1072,9 +1072,9 @@ func TestListAdminBookings_ExceptionHandling_ScanErrorPropagates(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
+// Техника тест-дизайна: Предугадывание ошибок.
 // Проверяем ошибку при некорректном timezone в строке списка бронирований администратора.
-func TestListAdminBookings_ExceptionHandling_InvalidTimezoneInRowReturnsError(t *testing.T) {
+func TestListAdminBookings_ErrorGuessing_InvalidTimezoneInRowReturnsError(t *testing.T) {
 	mock := newMock(t)
 	repo := newBookingRepo(mock)
 
@@ -1121,7 +1121,7 @@ func TestCancelAdminBooking_BoundaryValues_InvalidIDsReturnErrInvalidID(t *testi
 
 // Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
 // Проверяем успешную отмену бронирования администратором.
-func TestCancelAdminBooking_Scenario_Success(t *testing.T) {
+func TestCancelAdminBooking_StateTransitions_BookedCanBeCanceled(t *testing.T) {
 	mock := newMock(t)
 	repo := newBookingRepo(mock)
 	now := fixed(8)
@@ -1158,9 +1158,9 @@ func TestCancelAdminBooking_EquivalenceClasses_NotFoundReturnsErrNotFound(t *tes
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
+// Техника тест-дизайна: Предугадывание ошибок.
 // Проверяем, что ошибка запроса бронирования для admin-отмены возвращается вызывающему коду.
-func TestCancelAdminBooking_ExceptionHandling_QueryErrorPropagates(t *testing.T) {
+func TestCancelAdminBooking_ErrorGuessing_QueryErrorPropagates(t *testing.T) {
 	mock := newMock(t)
 	repo := newBookingRepo(mock)
 
@@ -1229,9 +1229,9 @@ func TestCancelAdminBooking_StateTransitions_NonCancellableStatesReturnErrConfli
 	}
 }
 
-// Техника тест-дизайна: обработка исключений.
+// Техника тест-дизайна: Предугадывание ошибок.
 // Проверяем, что ошибка UPDATE при admin-отмене возвращается вызывающему коду.
-func TestCancelAdminBooking_ExceptionHandling_UpdateErrorPropagates(t *testing.T) {
+func TestCancelAdminBooking_ErrorGuessing_UpdateErrorPropagates(t *testing.T) {
 	mock := newMock(t)
 	repo := newBookingRepo(mock)
 	updateErr := fmt.Errorf("update failed")
