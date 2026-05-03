@@ -7,8 +7,6 @@ import (
 	"testing"
 )
 
-// Техника тест-дизайна: таблица решений.
-// Проверяем сочетания статуса и типа ответа: обычный JSON c data и особый случай 204 без тела.
 func TestWriteJSON_DecisionTable_StatusAndBodyBehavior(t *testing.T) {
 	cases := []struct {
 		name         string
@@ -73,8 +71,6 @@ func TestWriteJSON_DecisionTable_StatusAndBodyBehavior(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, негативный сценарий.
-// Проверяем запись JSON-ответа с error.
 func TestWriteError_EquivalenceClasses_WritesErrorResponse(t *testing.T) {
 	w := httptest.NewRecorder()
 

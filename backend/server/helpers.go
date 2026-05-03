@@ -5,9 +5,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/nikolaarden2000/software-design-project/backend/auth"
-	"github.com/nikolaarden2000/software-design-project/backend/httpapi"
-	"github.com/nikolaarden2000/software-design-project/backend/users"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/auth"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/httpapi"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/users"
 )
 
 func parsePositiveInt(raw string, fallback int) int {

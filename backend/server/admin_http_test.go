@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nikolaarden2000/software-design-project/backend/bookings"
-	"github.com/nikolaarden2000/software-design-project/backend/db"
-	"github.com/nikolaarden2000/software-design-project/backend/locations"
-	"github.com/nikolaarden2000/software-design-project/backend/rooms"
-	"github.com/nikolaarden2000/software-design-project/backend/users"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/bookings"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/db"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/locations"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/rooms"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/users"
 )
 
 type testLocationRepo struct {
@@ -98,8 +98,6 @@ func validAdminRoomJSON() string {
 	}`
 }
 
-// Техника тест-дизайна: таблица решений.
-// Проверяем параметры доступа к admin-локациям в зависимости от роли пользователя.
 func TestAdminLocationsHandler_DecisionTable_RoleAccess(t *testing.T) {
 	cases := []struct {
 		name           string
@@ -138,8 +136,6 @@ func TestAdminLocationsHandler_DecisionTable_RoleAccess(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем запрос без пользователя в контексте.
 func TestAdminLocationsHandler_EquivalenceClasses_Unauthorized(t *testing.T) {
 	s := newAdminHandlersTestServer(&testLocationRepo{}, nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/admin/locations", nil)
@@ -157,8 +153,6 @@ func TestAdminLocationsHandler_EquivalenceClasses_Unauthorized(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем список помещений администратора с фильтрами location_id и status.
 func TestAdminRoomsHandler_EquivalenceClasses_SuccessWithFilters(t *testing.T) {
 	roomRepo := &testRoomRepo{
 		listAdminRooms: func(_ context.Context, adminID int, includeAll bool, locationID *int, status *string) ([]rooms.AdminRoomListItem, error) {
@@ -186,8 +180,6 @@ func TestAdminRoomsHandler_EquivalenceClasses_SuccessWithFilters(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: таблица решений.
-// Проверяем соответствие ошибок ListAdminRooms HTTP-ответам.
 func TestAdminRoomsHandler_DecisionTable_RepoErrors(t *testing.T) {
 	cases := []struct {
 		name       string
@@ -227,8 +219,6 @@ func TestAdminRoomsHandler_DecisionTable_RepoErrors(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем получение admin-карточки помещения.
 func TestAdminRoomDetailsHandler_EquivalenceClasses_Found(t *testing.T) {
 	roomRepo := &testRoomRepo{
 		getAdminRoom: func(_ context.Context, adminID int, includeAll bool, roomID int) (*rooms.AdminRoomDetails, error) {
@@ -252,8 +242,6 @@ func TestAdminRoomDetailsHandler_EquivalenceClasses_Found(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем создание помещения администратором.
 func TestCreateAdminRoomHandler_Scenario_Success(t *testing.T) {
 	roomRepo := &testRoomRepo{
 		createAdminRoom: func(_ context.Context, creatorID int, includeAll bool, input rooms.AdminRoomInput) (*rooms.AdminRoomListItem, error) {
@@ -278,8 +266,6 @@ func TestCreateAdminRoomHandler_Scenario_Success(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем редактирование помещения.
 func TestUpdateAdminRoomHandler_Scenario_Success(t *testing.T) {
 	roomRepo := &testRoomRepo{
 		updateAdminRoom: func(_ context.Context, adminID int, includeAll bool, roomID int, input rooms.AdminRoomInput) error {
@@ -311,8 +297,6 @@ func TestUpdateAdminRoomHandler_Scenario_Success(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем отправку помещения на модерацию.
 func TestSubmitAdminRoomHandler_StateTransitions_SubmitMovesRoomToPending(t *testing.T) {
 	roomRepo := &testRoomRepo{
 		submitAdminRoom: func(_ context.Context, adminID int, includeAll bool, roomID int) error {
@@ -341,8 +325,6 @@ func TestSubmitAdminRoomHandler_StateTransitions_SubmitMovesRoomToPending(t *tes
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем архивирование помещения администратором.
 func TestArchiveAdminRoomHandler_StateTransitions_ArchiveMovesRoomToArchived(t *testing.T) {
 	roomRepo := &testRoomRepo{
 		archiveAdminRoom: func(_ context.Context, adminID int, includeAll bool, roomID int, mode string, _ time.Time) (*rooms.AdminRoomArchiveResult, error) {
@@ -366,8 +348,6 @@ func TestArchiveAdminRoomHandler_StateTransitions_ArchiveMovesRoomToArchived(t *
 	}
 }
 
-// Техника тест-дизайна: таблица решений.
-// Проверяем соответствие ошибок ArchiveAdminRoom HTTP-ответам.
 func TestArchiveAdminRoomHandler_DecisionTable_RepoErrors(t *testing.T) {
 	cases := []struct {
 		name       string
@@ -411,8 +391,6 @@ func TestArchiveAdminRoomHandler_DecisionTable_RepoErrors(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем список бронирований администратора с фильтрами.
 func TestAdminBookingsHandler_EquivalenceClasses_SuccessWithFilters(t *testing.T) {
 	bookingRepo := &testBookingRepo{
 		listAdminBookings: func(_ context.Context, adminID int, includeAll bool, locationID *int, roomID *int, status *string, _ time.Time) ([]bookings.AdminBookingItem, error) {
@@ -443,8 +421,6 @@ func TestAdminBookingsHandler_EquivalenceClasses_SuccessWithFilters(t *testing.T
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем отмену бронирования администратором.
 func TestCancelAdminBookingHandler_StateTransitions_CancelMovesBookingToCanceled(t *testing.T) {
 	bookingRepo := &testBookingRepo{
 		cancelAdminBooking: func(_ context.Context, adminID int, includeAll bool, bookingID int, _ time.Time) error {
@@ -473,8 +449,6 @@ func TestCancelAdminBookingHandler_StateTransitions_CancelMovesBookingToCanceled
 	}
 }
 
-// Техника тест-дизайна: таблица решений.
-// Проверяем соответствие ошибок CancelAdminBooking HTTP-ответам.
 func TestCancelAdminBookingHandler_DecisionTable_RepoErrors(t *testing.T) {
 	cases := []struct {
 		name       string

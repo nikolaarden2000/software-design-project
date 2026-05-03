@@ -7,9 +7,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/nikolaarden2000/software-design-project/backend/auth"
-	"github.com/nikolaarden2000/software-design-project/backend/httpapi"
-	"github.com/nikolaarden2000/software-design-project/backend/users"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/auth"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/httpapi"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/users"
 )
 
 func readAPIError(t *testing.T, w *httptest.ResponseRecorder) *httpapi.APIError {
@@ -27,8 +27,6 @@ func readAPIError(t *testing.T, w *httptest.ResponseRecorder) *httpapi.APIError 
 	return body.Error
 }
 
-// Техника тест-дизайна: граничные значения.
-// Проверяем пустую строку, ноль, положительное число, отрицательное число и нечисловое значение.
 func TestParsePositiveInt_BoundaryValues(t *testing.T) {
 	cases := []struct {
 		name     string
@@ -54,8 +52,6 @@ func TestParsePositiveInt_BoundaryValues(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем успешный разбор path-параметра id.
 func TestParsePathID_EquivalenceClasses_ValidID(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/api/rooms/10", nil)
 	req.SetPathValue("room_id", "10")
@@ -74,8 +70,6 @@ func TestParsePathID_EquivalenceClasses_ValidID(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: граничные значения.
-// Проверяем недопустимые path id около нижней границы и нечисловое значение.
 func TestParsePathID_BoundaryValues_InvalidIDWritesBadRequest(t *testing.T) {
 	cases := []struct {
 		name string
@@ -113,8 +107,6 @@ func TestParsePathID_BoundaryValues_InvalidIDWritesBadRequest(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем отсутствующий query-параметр, пустой параметр и валидное положительное число.
 func TestOptionalIntQuery_EquivalenceClasses_ValidValues(t *testing.T) {
 	cases := []struct {
 		name      string
@@ -156,8 +148,6 @@ func TestOptionalIntQuery_EquivalenceClasses_ValidValues(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: граничные значения.
-// Проверяем недопустимые значения optional int около нижней границы.
 func TestOptionalIntQuery_BoundaryValues_InvalidValuesWriteBadRequest(t *testing.T) {
 	cases := []struct {
 		name      string
@@ -193,8 +183,6 @@ func TestOptionalIntQuery_BoundaryValues_InvalidValuesWriteBadRequest(t *testing
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем отсутствующую строку, строку из пробелов и непустое значение с trim.
 func TestOptionalStringQuery_EquivalenceClasses(t *testing.T) {
 	cases := []struct {
 		name      string
@@ -231,8 +219,6 @@ func TestOptionalStringQuery_EquivalenceClasses(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем успешное получение текущего пользователя из контекста запроса.
 func TestCurrentUserFromRequest_EquivalenceClasses_UserExists(t *testing.T) {
 	wantUser := &users.User{
 		ID:       7,
@@ -258,8 +244,6 @@ func TestCurrentUserFromRequest_EquivalenceClasses_UserExists(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем запрос без пользователя в контексте.
 func TestCurrentUserFromRequest_EquivalenceClasses_NoUserWritesUnauthorized(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/api/admin", nil)
 	w := httptest.NewRecorder()
@@ -282,8 +266,6 @@ func TestCurrentUserFromRequest_EquivalenceClasses_NoUserWritesUnauthorized(t *t
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем случай, когда в контексте лежит значение неправильного типа.
 func TestCurrentUserFromRequest_EquivalenceClasses_WrongContextValueWritesUnauthorized(t *testing.T) {
 	ctx := context.WithValue(context.Background(), auth.KeyUser, "not-a-user")
 	req := httptest.NewRequest(http.MethodGet, "/api/admin", nil).WithContext(ctx)

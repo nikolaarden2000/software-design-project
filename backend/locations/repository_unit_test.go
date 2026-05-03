@@ -7,8 +7,8 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/nikolaarden2000/software-design-project/backend/db"
 	pgxmock "github.com/pashagolub/pgxmock/v2"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/db"
 )
 
 func newLocationsMock(t *testing.T) pgxmock.PgxPoolIface {
@@ -67,8 +67,6 @@ func existsLocationByIDQuery() string {
 	return `SELECT EXISTS (SELECT 1 FROM locations WHERE id = $1)`
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем получение списка локаций без фильтров.
 func TestListLocations_EquivalenceClasses_SuccessWithoutFilters(t *testing.T) {
 	mock := newLocationsMock(t)
 	repo := newLocationsRepo(mock)
@@ -98,8 +96,6 @@ func TestListLocations_EquivalenceClasses_SuccessWithoutFilters(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем класс запроса списка локаций с фильтрами company_id и city.
 func TestListLocations_EquivalenceClasses_SuccessWithFilters(t *testing.T) {
 	mock := newLocationsMock(t)
 	repo := newLocationsRepo(mock)
@@ -127,8 +123,6 @@ func TestListLocations_EquivalenceClasses_SuccessWithFilters(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем класс пустого результата.
 func TestListLocations_EquivalenceClasses_EmptyResultReturnsEmptySlice(t *testing.T) {
 	mock := newLocationsMock(t)
 	repo := newLocationsRepo(mock)
@@ -153,8 +147,6 @@ func TestListLocations_EquivalenceClasses_EmptyResultReturnsEmptySlice(t *testin
 	}
 }
 
-// Техника тест-дизайна: Предугадывание ошибок.
-// Проверяем, что ошибка запроса списка локаций возвращается вызывающему коду.
 func TestListLocations_ErrorGuessing_QueryErrorPropagates(t *testing.T) {
 	mock := newLocationsMock(t)
 	repo := newLocationsRepo(mock)
@@ -174,8 +166,6 @@ func TestListLocations_ErrorGuessing_QueryErrorPropagates(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Предугадывание ошибок.
-// Проверяем, что ошибка сканирования строки списка локаций возвращается вызывающему коду.
 func TestListLocations_ErrorGuessing_ScanErrorPropagates(t *testing.T) {
 	mock := newLocationsMock(t)
 	repo := newLocationsRepo(mock)
@@ -197,8 +187,6 @@ func TestListLocations_ErrorGuessing_ScanErrorPropagates(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: таблица решений.
-// Проверяем результат ListAdminLocations в зависимости от includeAll и валидности adminID.
 func TestListAdminLocations_DecisionTable_AdminIDValidationAndIncludeAll(t *testing.T) {
 	cases := []struct {
 		name        string
@@ -244,8 +232,6 @@ func TestListAdminLocations_DecisionTable_AdminIDValidationAndIncludeAll(t *test
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем успешное получение локаций, доступных администратору.
 func TestListAdminLocations_EquivalenceClasses_ValidAdminReturnsLocations(t *testing.T) {
 	mock := newLocationsMock(t)
 	repo := newLocationsRepo(mock)
@@ -275,8 +261,6 @@ func TestListAdminLocations_EquivalenceClasses_ValidAdminReturnsLocations(t *tes
 	}
 }
 
-// Техника тест-дизайна: Предугадывание ошибок.
-// Проверяем, что ошибка запроса admin-локаций возвращается вызывающему коду.
 func TestListAdminLocations_ErrorGuessing_QueryErrorPropagates(t *testing.T) {
 	mock := newLocationsMock(t)
 	repo := newLocationsRepo(mock)
@@ -293,8 +277,6 @@ func TestListAdminLocations_ErrorGuessing_QueryErrorPropagates(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Предугадывание ошибок.
-// Проверяем, что ошибка сканирования строки admin-локации возвращается вызывающему коду.
 func TestListAdminLocations_ErrorGuessing_ScanErrorPropagates(t *testing.T) {
 	mock := newLocationsMock(t)
 	repo := newLocationsRepo(mock)
@@ -313,8 +295,6 @@ func TestListAdminLocations_ErrorGuessing_ScanErrorPropagates(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем варианты разбора адреса для хранения в полях street и house_number.
 func TestSplitAddressForStorage_EquivalenceClasses(t *testing.T) {
 	cases := []struct {
 		name            string
@@ -381,8 +361,6 @@ func TestSplitAddressForStorage_EquivalenceClasses(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: граничные значения.
-// Проверяем недопустимые companyID около нижней границы.
 func TestCreateLocation_BoundaryValues_InvalidCompanyIDReturnsErrInvalidID(t *testing.T) {
 	cases := []struct {
 		name      string
@@ -414,8 +392,6 @@ func TestCreateLocation_BoundaryValues_InvalidCompanyIDReturnsErrInvalidID(t *te
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем невалидные текстовые поля city и address.
 func TestCreateLocation_EquivalenceClasses_EmptyCityOrAddressReturnsErrInvalidArgument(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -450,8 +426,6 @@ func TestCreateLocation_EquivalenceClasses_EmptyCityOrAddressReturnsErrInvalidAr
 	}
 }
 
-// Техника тест-дизайна: таблица решений.
-// Проверяем выбор timezone при создании локации: пустое значение заменяется значением по умолчанию, непустое используется после trim.
 func TestCreateLocation_DecisionTable_TimezoneSelection(t *testing.T) {
 	cases := []struct {
 		name         string
@@ -536,8 +510,6 @@ func TestCreateLocation_DecisionTable_TimezoneSelection(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Предугадывание ошибок.
-// Проверяем, что ошибка INSERT при создании локации возвращается вызывающему коду.
 func TestCreateLocation_ErrorGuessing_InsertErrorPropagates(t *testing.T) {
 	mock := newLocationsMock(t)
 	repo := newLocationsRepo(mock)
@@ -562,8 +534,6 @@ func TestCreateLocation_ErrorGuessing_InsertErrorPropagates(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Предугадывание ошибок.
-// Проверяем, что ошибка последующего GetLocationByID после INSERT возвращается вызывающему коду.
 func TestCreateLocation_ErrorGuessing_GetCreatedLocationErrorPropagates(t *testing.T) {
 	mock := newLocationsMock(t)
 	repo := newLocationsRepo(mock)
@@ -591,8 +561,6 @@ func TestCreateLocation_ErrorGuessing_GetCreatedLocationErrorPropagates(t *testi
 	}
 }
 
-// Техника тест-дизайна: граничные значения.
-// Проверяем недопустимые id около нижней границы.
 func TestGetLocationByID_BoundaryValues_InvalidIDsReturnErrInvalidID(t *testing.T) {
 	cases := []struct {
 		name string
@@ -616,8 +584,6 @@ func TestGetLocationByID_BoundaryValues_InvalidIDsReturnErrInvalidID(t *testing.
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем успешное получение локации по id.
 func TestGetLocationByID_EquivalenceClasses_Found(t *testing.T) {
 	mock := newLocationsMock(t)
 	repo := newLocationsRepo(mock)
@@ -639,8 +605,6 @@ func TestGetLocationByID_EquivalenceClasses_Found(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем класс отсутствующей локации.
 func TestGetLocationByID_EquivalenceClasses_NotFoundReturnsErrNotFound(t *testing.T) {
 	mock := newLocationsMock(t)
 	repo := newLocationsRepo(mock)
@@ -656,8 +620,6 @@ func TestGetLocationByID_EquivalenceClasses_NotFoundReturnsErrNotFound(t *testin
 	}
 }
 
-// Техника тест-дизайна: Предугадывание ошибок.
-// Проверяем, что ошибка запроса локации по id возвращается вызывающему коду.
 func TestGetLocationByID_ErrorGuessing_QueryErrorPropagates(t *testing.T) {
 	mock := newLocationsMock(t)
 	repo := newLocationsRepo(mock)
@@ -674,8 +636,6 @@ func TestGetLocationByID_ErrorGuessing_QueryErrorPropagates(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Предугадывание ошибок.
-// Проверяем, что ошибка сканирования локации по id возвращается вызывающему коду.
 func TestGetLocationByID_ErrorGuessing_ScanErrorPropagates(t *testing.T) {
 	mock := newLocationsMock(t)
 	repo := newLocationsRepo(mock)
@@ -694,8 +654,6 @@ func TestGetLocationByID_ErrorGuessing_ScanErrorPropagates(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: граничные значения.
-// Проверяем недопустимые id около нижней границы.
 func TestExistsByID_BoundaryValues_InvalidIDsReturnErrInvalidID(t *testing.T) {
 	cases := []struct {
 		name string
@@ -722,8 +680,6 @@ func TestExistsByID_BoundaryValues_InvalidIDsReturnErrInvalidID(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем классы результата ExistsByID: локация существует и локация не существует.
 func TestExistsByID_EquivalenceClasses_ExistsAndNotExists(t *testing.T) {
 	cases := []struct {
 		name     string
@@ -755,8 +711,6 @@ func TestExistsByID_EquivalenceClasses_ExistsAndNotExists(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Предугадывание ошибок.
-// Проверяем, что ошибка запроса ExistsByID возвращается вызывающему коду.
 func TestExistsByID_ErrorGuessing_DBErrorPropagates(t *testing.T) {
 	mock := newLocationsMock(t)
 	repo := newLocationsRepo(mock)

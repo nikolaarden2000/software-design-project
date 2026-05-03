@@ -25,8 +25,6 @@ func seedSession(sm *SessionManager, id string, userID int, expiresAt time.Time)
 	sm.mu.Unlock()
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем, что Create создаёт сессию с непустым hex-идентификатором, корректным userID и ожидаемым сроком действия.
 func TestCreate_EquivalenceClasses_StoresSessionWithExpectedFields(t *testing.T) {
 	ttl := time.Hour
 	sm := newTestSM(ttl)
@@ -62,8 +60,6 @@ func TestCreate_EquivalenceClasses_StoresSessionWithExpectedFields(t *testing.T)
 	}
 }
 
-// Техника тест-дизайна: предположение об ошибке.
-// Проверяем, что два создания сессии не возвращают одинаковый идентификатор.
 func TestCreate_ErrorGuessing_TwoCallsReturnDifferentIDs(t *testing.T) {
 	sm := newTestSM(time.Hour)
 
@@ -82,8 +78,6 @@ func TestCreate_ErrorGuessing_TwoCallsReturnDifferentIDs(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем разные классы целочисленных userID, которые SessionManager сохраняет без валидации.
 func TestCreate_EquivalenceClasses_UserIDValues(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -116,8 +110,6 @@ func TestCreate_EquivalenceClasses_UserIDValues(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: таблица решений.
-// Проверяем результат Get в зависимости от наличия сессии и срока её действия.
 func TestGet_DecisionTable(t *testing.T) {
 	cases := []struct {
 		name      string
@@ -150,8 +142,6 @@ func TestGet_DecisionTable(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: граничные значения.
-// Проверяем поведение Get около границы истечения срока действия сессии.
 func TestGet_BoundaryValues_ExpirationBoundary(t *testing.T) {
 	cases := []struct {
 		name      string
@@ -178,8 +168,6 @@ func TestGet_BoundaryValues_ExpirationBoundary(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: переходы состояний.
-// Проверяем переход истёкшей сессии в удалённое состояние после Get.
 func TestGet_StateTransition_ExpiredSessionRemovedFromStore(t *testing.T) {
 	sm := newTestSM(time.Hour)
 	seedSession(sm, "s", 1, time.Now().UTC().Add(-time.Second))
@@ -195,8 +183,6 @@ func TestGet_StateTransition_ExpiredSessionRemovedFromStore(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: переходы состояний.
-// Проверяем, что валидная сессия продлевает срок действия после Get.
 func TestGet_StateTransition_RenewsTTL(t *testing.T) {
 	ttl := time.Hour
 	sm := newTestSM(ttl)
@@ -217,8 +203,6 @@ func TestGet_StateTransition_RenewsTTL(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем удаление существующей и несуществующей сессии.
 func TestDelete_EquivalenceClasses(t *testing.T) {
 	t.Run("existing session is removed", func(t *testing.T) {
 		sm := newTestSM(time.Hour)
@@ -239,8 +223,6 @@ func TestDelete_EquivalenceClasses(t *testing.T) {
 	})
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем, что Stop завершает работу cleanupLoop без блокировки.
 func TestStop_StateTransition_CleanupLoopTerminates(t *testing.T) {
 	sm := NewSessionManager(time.Hour, 10*time.Millisecond)
 

@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/nikolaarden2000/software-design-project/backend/db"
 	pgxmock "github.com/pashagolub/pgxmock/v2"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/db"
 )
 
 func newMock(t *testing.T) pgxmock.PgxPoolIface {
@@ -54,8 +54,6 @@ func expectUserByID(mock pgxmock.PgxPoolIface, id int, userID int, username, ema
 		)
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем классы валидных и невалидных ролей.
 func TestIsValidRole_EquivalenceClasses(t *testing.T) {
 	cases := []struct {
 		name string
@@ -81,9 +79,6 @@ func TestIsValidRole_EquivalenceClasses(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем два класса ролей: валидная роль (успешное создание) и невалидная роль (ошибка валидации до БД).
-// По принципу ЭК достаточно одного представителя от каждого класса.
 func TestCreateUserWithRole_EquivalenceClasses_ValidAndInvalidRole(t *testing.T) {
 	cases := []struct {
 		name      string
@@ -128,9 +123,7 @@ func TestCreateUserWithRole_EquivalenceClasses_ValidAndInvalidRole(t *testing.T)
 	}
 }
 
-// Техника тест-дизайна: ErrorGuessing_дывание ошибок + Предугадывание ошибок.
-// Проверяем типичные операционные сбои: конфликт по email и произвольная ошибка БД.
-func TestCreateUserWithRole_ErrorGuessingAndExceptionHandling(t *testing.T) {
+func TestCreateUserWithRole_ErrorGuessing(t *testing.T) {
 	dbErr := fmt.Errorf("insert failed")
 	cases := []struct {
 		name      string
@@ -174,8 +167,6 @@ func TestCreateUserWithRole_ErrorGuessingAndExceptionHandling(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем классы результата поиска по email: пользователь найден и пользователь отсутствует.
 func TestGetUserByEmail_EquivalenceClasses_FoundAndNotFound(t *testing.T) {
 	cases := []struct {
 		name      string
@@ -221,8 +212,6 @@ func TestGetUserByEmail_EquivalenceClasses_FoundAndNotFound(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Предугадывание ошибок.
-// Проверяем, что ошибка БД при поиске по email пробрасывается без потери.
 func TestGetUserByEmail_ErrorGuessing_DBErrorPropagates(t *testing.T) {
 	mock := newMock(t)
 	repo := newUserRepo(mock)
@@ -237,8 +226,6 @@ func TestGetUserByEmail_ErrorGuessing_DBErrorPropagates(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем два класса результата поиска по id: пользователь найден и пользователь отсутствует.
 func TestGetUserByID_EquivalenceClasses_FoundAndNotFound(t *testing.T) {
 	cases := []struct {
 		name      string
@@ -290,8 +277,6 @@ func TestGetUserByID_EquivalenceClasses_FoundAndNotFound(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: граничные значения.
-// Проверяем недопустимые значения id около нижней границы.
 func TestGetUserByID_BoundaryValues_InvalidIDsReturnErrInvalidID(t *testing.T) {
 	cases := []struct {
 		name string
@@ -315,8 +300,6 @@ func TestGetUserByID_BoundaryValues_InvalidIDsReturnErrInvalidID(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Предугадывание ошибок.
-// Проверяем, что ошибка базы данных при поиске по id возвращается вызывающему коду.
 func TestGetUserByID_ErrorGuessing_DBErrorPropagates(t *testing.T) {
 	mock := newMock(t)
 	repo := newUserRepo(mock)
@@ -333,8 +316,6 @@ func TestGetUserByID_ErrorGuessing_DBErrorPropagates(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем два класса: email свободен (false) и email занят (true).
 func TestIsEmailTaken_EquivalenceClasses(t *testing.T) {
 	cases := []struct {
 		name     string
@@ -366,8 +347,6 @@ func TestIsEmailTaken_EquivalenceClasses(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Предугадывание ошибок.
-// Проверяем, что ошибка базы данных при проверке email возвращается вызывающему коду.
 func TestIsEmailTaken_ErrorGuessing_DBErrorPropagates(t *testing.T) {
 	mock := newMock(t)
 	repo := newUserRepo(mock)
@@ -387,8 +366,6 @@ func TestIsEmailTaken_ErrorGuessing_DBErrorPropagates(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем класс администратора с назначенными локациями — успешное получение списка.
 func TestListAdminLocations_EquivalenceClasses_ValidAdminReturnsLocations(t *testing.T) {
 	mock := newMock(t)
 	repo := newUserRepo(mock)
@@ -414,8 +391,6 @@ func TestListAdminLocations_EquivalenceClasses_ValidAdminReturnsLocations(t *tes
 	}
 }
 
-// Техника тест-дизайна: граничные значения.
-// Проверяем недопустимые значения adminID около нижней границы.
 func TestListAdminLocations_BoundaryValues_InvalidAdminIDsReturnErrInvalidID(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -439,8 +414,6 @@ func TestListAdminLocations_BoundaryValues_InvalidAdminIDsReturnErrInvalidID(t *
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем класс администратора без назначенных локаций.
 func TestListAdminLocations_EquivalenceClasses_EmptyResultReturnsEmptySlice(t *testing.T) {
 	mock := newMock(t)
 	repo := newUserRepo(mock)
@@ -462,8 +435,6 @@ func TestListAdminLocations_EquivalenceClasses_EmptyResultReturnsEmptySlice(t *t
 	}
 }
 
-// Техника тест-дизайна: Предугадывание ошибок.
-// Проверяем, что ошибка базы данных при получении локаций администратора возвращается вызывающему коду.
 func TestListAdminLocations_ErrorGuessing_DBErrorPropagates(t *testing.T) {
 	mock := newMock(t)
 	repo := newUserRepo(mock)
@@ -480,8 +451,6 @@ func TestListAdminLocations_ErrorGuessing_DBErrorPropagates(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем список администраторов вместе с их назначенными локациями.
 func TestListAdmins_Scenario_SuccessWithLocations(t *testing.T) {
 	mock := newMock(t)
 	repo := newUserRepo(mock)
@@ -526,8 +495,6 @@ func TestListAdmins_Scenario_SuccessWithLocations(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем класс результата без администраторов.
 func TestListAdmins_EquivalenceClasses_EmptyResultReturnsEmptySlice(t *testing.T) {
 	mock := newMock(t)
 	repo := newUserRepo(mock)
@@ -548,8 +515,6 @@ func TestListAdmins_EquivalenceClasses_EmptyResultReturnsEmptySlice(t *testing.T
 	}
 }
 
-// Техника тест-дизайна: Предугадывание ошибок.
-// Проверяем ошибку основного запроса списка администраторов.
 func TestListAdmins_ErrorGuessing_ListAdminsDBErrorPropagates(t *testing.T) {
 	mock := newMock(t)
 	repo := newUserRepo(mock)
@@ -565,8 +530,6 @@ func TestListAdmins_ErrorGuessing_ListAdminsDBErrorPropagates(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Предугадывание ошибок.
-// Проверяем ошибку вложенного запроса локаций администратора.
 func TestListAdmins_ErrorGuessing_ListAdminLocationsDBErrorPropagates(t *testing.T) {
 	mock := newMock(t)
 	repo := newUserRepo(mock)
@@ -589,8 +552,6 @@ func TestListAdmins_ErrorGuessing_ListAdminLocationsDBErrorPropagates(t *testing
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем позитивный класс: валидные ID и роль admin — успешное назначение.
 func TestAssignAdminToLocation_EquivalenceClasses_Success(t *testing.T) {
 	mock := newMock(t)
 	repo := newUserRepo(mock)
@@ -608,8 +569,6 @@ func TestAssignAdminToLocation_EquivalenceClasses_Success(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: граничные значения.
-// Проверяем недопустимые adminID и locationID около нижней границы.
 func TestAssignAdminToLocation_BoundaryValues_InvalidIDsReturnErrInvalidID(t *testing.T) {
 	cases := []struct {
 		name       string
@@ -636,8 +595,6 @@ func TestAssignAdminToLocation_BoundaryValues_InvalidIDsReturnErrInvalidID(t *te
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем классы ролей: только admin проходит проверку, остальные роли отклоняются.
 func TestAssignAdminToLocation_EquivalenceClasses_RoleValidation(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -671,8 +628,6 @@ func TestAssignAdminToLocation_EquivalenceClasses_RoleValidation(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Предугадывание ошибок.
-// Проверяем, что ошибка GetUserByID при назначении администратора возвращается вызывающему коду.
 func TestAssignAdminToLocation_ErrorGuessing_GetUserByIDErrorPropagates(t *testing.T) {
 	mock := newMock(t)
 	repo := newUserRepo(mock)
@@ -688,9 +643,6 @@ func TestAssignAdminToLocation_ErrorGuessing_GetUserByIDErrorPropagates(t *testi
 	}
 }
 
-// Техника тест-дизайна: таблица решений.
-// Проверяем преобразование PostgreSQL-ошибок назначения администратора.
-// Два условия: тип ошибки (PgError / обычная) и код ошибки (23505 / 23503 / иной).
 func TestMapAssignmentError_DecisionTable(t *testing.T) {
 	plainErr := fmt.Errorf("plain error")
 	duplicateErr := &pgconn.PgError{Code: "23505"}
@@ -719,8 +671,6 @@ func TestMapAssignmentError_DecisionTable(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем позитивный класс: валидные ID — успешное удаление назначения.
 func TestDeleteAdminLocationAssignment_EquivalenceClasses_ValidIDsDeletesAssignment(t *testing.T) {
 	mock := newMock(t)
 	repo := newUserRepo(mock)
@@ -736,8 +686,6 @@ func TestDeleteAdminLocationAssignment_EquivalenceClasses_ValidIDsDeletesAssignm
 	}
 }
 
-// Техника тест-дизайна: граничные значения.
-// Проверяем недопустимые adminID и locationID при удалении назначения.
 func TestDeleteAdminLocationAssignment_BoundaryValues_InvalidIDsReturnErrInvalidID(t *testing.T) {
 	cases := []struct {
 		name       string
@@ -764,8 +712,6 @@ func TestDeleteAdminLocationAssignment_BoundaryValues_InvalidIDsReturnErrInvalid
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем два класса результата DELETE: строка удалена (успех) и строка не найдена (ErrNotFound).
 func TestDeleteAdminLocationAssignment_EquivalenceClasses_RowsAffected(t *testing.T) {
 	cases := []struct {
 		name         string
@@ -794,8 +740,6 @@ func TestDeleteAdminLocationAssignment_EquivalenceClasses_RowsAffected(t *testin
 	}
 }
 
-// Техника тест-дизайна: Предугадывание ошибок.
-// Проверяем, что ошибка базы данных при удалении назначения возвращается вызывающему коду.
 func TestDeleteAdminLocationAssignment_ErrorGuessing_DBErrorPropagates(t *testing.T) {
 	mock := newMock(t)
 	repo := newUserRepo(mock)

@@ -1,0 +1,75 @@
+stages:
+  - build
+  - e2e
+
+build_project:
+  stage: build
+
+  image: golang:1.26.2-trixie
+
+  before_script:
+    - apt-get update
+    - apt-get install -y bash nodejs npm
+    - mkdir -p logs
+    - touch logs/backend-unit.log logs/frontend-unit.log
+
+  script:
+    - go version
+    - node --version
+    - npm --version
+    - bash -c 'set -o pipefail; cd backend && go test -coverprofile coverage.out ./... 2>&1 | tee ../logs/backend-unit.log'
+    - bash -c 'set -o pipefail; cd backend && go tool cover -func=coverage.out 2>&1 | tee -a ../logs/backend-unit.log'
+
+    - bash -c 'set -o pipefail; cd frontend/public && npm ci || npm install'
+    - bash -c 'set -o pipefail; cd frontend/public && npm test 2>&1 | tee ../../logs/frontend-unit.log'
+
+    - bash -c 'cd backend && go build -o /tmp/app ./cmd/server'
+
+  artifacts:
+    when: always
+    expire_in: 7 days
+    paths:
+      - logs/backend-unit.log
+      - logs/frontend-unit.log
+
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+
+
+e2e_tests:
+  stage: e2e
+
+  image: docker:27-cli
+
+  services:
+    - name: docker:27-dind
+      alias: docker
+      command: ["--tls=false"]
+
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+    DOCKER_DRIVER: overlay2
+    COMPOSE_PROJECT_NAME: booking-e2e-$CI_PIPELINE_ID
+
+  before_script:
+    - docker version
+    - docker compose version
+
+  script:
+    - docker compose -p "$COMPOSE_PROJECT_NAME" -f docker-compose.e2e.yaml down -v --remove-orphans || true
+    - docker compose -p "$COMPOSE_PROJECT_NAME" -f docker-compose.e2e.yaml up --build --abort-on-container-exit --exit-code-from e2e-tests
+
+  after_script:
+    - docker compose -p "$COMPOSE_PROJECT_NAME" -f docker-compose.e2e.yaml down -v --remove-orphans || true
+
+  artifacts:
+    when: always
+    expire_in: 7 days
+    paths:
+      - frontend/public/playwright-report/
+      - frontend/public/test-results/
+
+  rules:
+    - when: manual
+

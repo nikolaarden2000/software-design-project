@@ -10,7 +10,7 @@ ECHO Unknown option %1
 GOTO end
 
 :build
-docker-compose build
+docker compose build --no-cache
 GOTO end
 
 :app
@@ -22,8 +22,8 @@ docker-compose down -v
 GOTO app
 
 :unit
-docker-compose run --rm app cat go-coverage-report.txt
-docker-compose run --rm app cat js-test-report.txt
+docker compose run --rm backend cat backend-unit.log
+docker compose run --rm frontend cat frontend-unit.log
 GOTO end
 
 :end

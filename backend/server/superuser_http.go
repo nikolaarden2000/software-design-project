@@ -6,11 +6,11 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/nikolaarden2000/software-design-project/backend/auth"
-	"github.com/nikolaarden2000/software-design-project/backend/db"
-	"github.com/nikolaarden2000/software-design-project/backend/httpapi"
-	"github.com/nikolaarden2000/software-design-project/backend/rooms"
-	"github.com/nikolaarden2000/software-design-project/backend/users"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/auth"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/db"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/httpapi"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/rooms"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/users"
 )
 
 type createCompanyRequest struct {

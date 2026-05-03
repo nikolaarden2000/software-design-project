@@ -7,7 +7,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 
-	"github.com/nikolaarden2000/software-design-project/backend/db"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/db"
 )
 
 const (

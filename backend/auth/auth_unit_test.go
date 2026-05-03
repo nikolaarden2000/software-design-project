@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nikolaarden2000/software-design-project/backend/users"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/users"
 )
 
 var errNotConfigured = errors.New("mock: method not configured")
@@ -81,8 +81,6 @@ func strPtr(s string) *string {
 	return &s
 }
 
-// Техника тест-дизайна: граничные значения.
-// Проверяем значения длины пароля около минимальной и максимальной границы.
 func TestValidatePassword_BoundaryValues_Length(t *testing.T) {
 	cases := []struct {
 		name     string
@@ -91,12 +89,12 @@ func TestValidatePassword_BoundaryValues_Length(t *testing.T) {
 	}{
 		{"minLen-1 is invalid", strings.Repeat("a", minPasswordLen-1), ErrPasswordTooShort},
 		{"minLen is valid", strings.Repeat("a", minPasswordLen), nil},
+		{"minLen+1 is valid", strings.Repeat("a", minPasswordLen+1), nil},
 		{"maxLen is valid", strings.Repeat("a", maxPasswordLen), nil},
 		{"maxLen+1 is invalid", strings.Repeat("a", maxPasswordLen+1), ErrPasswordTooLong},
 	}
 
 	for _, tc := range cases {
-		tc := tc
 
 		t.Run(tc.name, func(t *testing.T) {
 			err := validatePassword(tc.password)
@@ -108,8 +106,6 @@ func TestValidatePassword_BoundaryValues_Length(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем классы допустимых и недопустимых символов пароля.
 func TestValidatePassword_EquivalenceClasses_AllowedAndForbiddenCharacters(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -137,8 +133,6 @@ func TestValidatePassword_EquivalenceClasses_AllowedAndForbiddenCharacters(t *te
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем полный цикл: хеширование пароля и успешная проверка тем же паролем.
 func TestVerifyPassword_Scenario_RoundTrip(t *testing.T) {
 	hash := mustHashPassword(t, "password123")
 
@@ -152,8 +146,6 @@ func TestVerifyPassword_Scenario_RoundTrip(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем класс несовпадающего пароля.
 func TestVerifyPassword_EquivalenceClasses_WrongPasswordReturnsFalse(t *testing.T) {
 	hash := mustHashPassword(t, "correct-password")
 
@@ -167,8 +159,6 @@ func TestVerifyPassword_EquivalenceClasses_WrongPasswordReturnsFalse(t *testing.
 	}
 }
 
-// Техника тест-дизайна: предположение об ошибке.
-// Проверяем, что одинаковый пароль получает разные хеши из-за случайной соли.
 func TestHashPassword_ErrorGuessing_SameInputProducesDifferentHashes(t *testing.T) {
 	h1 := mustHashPassword(t, "password123")
 	h2 := mustHashPassword(t, "password123")
@@ -178,8 +168,6 @@ func TestHashPassword_ErrorGuessing_SameInputProducesDifferentHashes(t *testing.
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем класс некорректно сохранённого хеша.
 func TestVerifyPassword_EquivalenceClasses_InvalidStoredHashReturnsError(t *testing.T) {
 	_, err := verifyPassword("password", "not-a-valid-hash")
 
@@ -188,8 +176,6 @@ func TestVerifyPassword_EquivalenceClasses_InvalidStoredHashReturnsError(t *test
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем классы корректной структуры хеша и разных вариантов некорректных полей.
 func TestParseHashString_EquivalenceClasses(t *testing.T) {
 	valid := mustHashPassword(t, "test-password")
 
@@ -223,8 +209,6 @@ func TestParseHashString_EquivalenceClasses(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем классы невалидных входных данных регистрации до обращения к репозиторию.
 func TestRegister_InputValidationEquivalenceClasses_NoDBCalls(t *testing.T) {
 	cases := []struct {
 		name     string
@@ -259,8 +243,6 @@ func TestRegister_InputValidationEquivalenceClasses_NoDBCalls(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем класс email, который уже занят.
 func TestRegister_EquivalenceClasses_EmailAlreadyTakenReturnsErrEmailExists(t *testing.T) {
 	repo := &mockRepo{
 		isEmailTaken: func(_ context.Context, _ string) (bool, error) {
@@ -276,8 +258,6 @@ func TestRegister_EquivalenceClasses_EmailAlreadyTakenReturnsErrEmailExists(t *t
 	}
 }
 
-// Техника тест-дизайна: Предугадывание ошибок.
-// Проверяем, что ошибка проверки уникальности email возвращается вызывающему коду.
 func TestRegister_ErrorGuessing_IsEmailTakenErrorPropagates(t *testing.T) {
 	dbErr := fmt.Errorf("connection lost")
 	repo := &mockRepo{
@@ -294,8 +274,6 @@ func TestRegister_ErrorGuessing_IsEmailTakenErrorPropagates(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем, что Register нормализует входные данные и создаёт пользователя с ролью user по умолчанию.
 func TestRegister_Scenario_UsesDefaultUserRole(t *testing.T) {
 	repo := &mockRepo{
 		isEmailTaken: func(_ context.Context, email string) (bool, error) {
@@ -339,8 +317,6 @@ func TestRegister_Scenario_UsesDefaultUserRole(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем допустимые роли как класс валидных значений.
 func TestRegisterWithRole_EquivalenceClasses_ValidRoles(t *testing.T) {
 	cases := []struct {
 		name string
@@ -396,8 +372,6 @@ func TestRegisterWithRole_EquivalenceClasses_ValidRoles(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем класс невалидных ролей, которые отклоняются до обращения к репозиторию.
 func TestRegisterWithRole_EquivalenceClasses_InvalidRole(t *testing.T) {
 	svc := newTestAuthService(&mockRepo{})
 
@@ -411,8 +385,6 @@ func TestRegisterWithRole_EquivalenceClasses_InvalidRole(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Предугадывание ошибок.
-// Проверяем, что ошибка CreateUserWithRole возвращается вызывающему коду.
 func TestRegisterWithRole_ErrorGuessing_CreateUserWithRoleErrorPropagates(t *testing.T) {
 	createErr := fmt.Errorf("insert failed")
 
@@ -434,8 +406,6 @@ func TestRegisterWithRole_ErrorGuessing_CreateUserWithRoleErrorPropagates(t *tes
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем классы невалидных входных данных входа до обращения к репозиторию.
 func TestLogin_InputValidationEquivalenceClasses_NoDBCalls(t *testing.T) {
 	cases := []struct {
 		name     string
@@ -464,8 +434,6 @@ func TestLogin_InputValidationEquivalenceClasses_NoDBCalls(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Предугадывание ошибок.
-// Проверяем, что ошибка поиска пользователя возвращается вызывающему коду.
 func TestLogin_ErrorGuessing_UserLookupErrorPropagates(t *testing.T) {
 	dbErr := fmt.Errorf("user not found")
 	repo := &mockRepo{
@@ -482,8 +450,6 @@ func TestLogin_ErrorGuessing_UserLookupErrorPropagates(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем класс неверного пароля.
 func TestLogin_EquivalenceClasses_WrongPasswordReturnsInvalidCredentials(t *testing.T) {
 	correctHash := mustHashPassword(t, "correct-password")
 	repo := &mockRepo{
@@ -500,8 +466,6 @@ func TestLogin_EquivalenceClasses_WrongPasswordReturnsInvalidCredentials(t *test
 	}
 }
 
-// Техника тест-дизайна: Предугадывание ошибок.
-// Проверяем поведение при повреждённом сохранённом хеше.
 func TestLogin_ErrorGuessing_CorruptedStoredHashReturnsError(t *testing.T) {
 	repo := &mockRepo{
 		getUserByEmail: func(_ context.Context, email string) (*users.User, error) {
@@ -517,8 +481,6 @@ func TestLogin_ErrorGuessing_CorruptedStoredHashReturnsError(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем успешный вход, возврат пользователя, cookie и создание сессии.
 func TestLogin_Scenario_ReturnsUserAndSetsCookie(t *testing.T) {
 	correctHash := mustHashPassword(t, "password1")
 	repo := &mockRepo{
@@ -581,8 +543,6 @@ func TestLogin_Scenario_ReturnsUserAndSetsCookie(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: переходы состояний.
-// Проверяем переход пользователя из состояния с активной сессией в состояние без сессии после Logout.
 func TestLogout_StateTransition_WithCookieDeletesSessionAndClearsCookie(t *testing.T) {
 	svc := newTestAuthService(&mockRepo{})
 	sessionID, _ := svc.sessionMgr.Create(1)
@@ -612,8 +572,6 @@ func TestLogout_StateTransition_WithCookieDeletesSessionAndClearsCookie(t *testi
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем класс выхода без входящей cookie.
 func TestLogout_EquivalenceClasses_WithoutCookieClearsCookie(t *testing.T) {
 	svc := newTestAuthService(&mockRepo{})
 	req := httptest.NewRequest(http.MethodPost, "/logout", nil)
@@ -630,8 +588,6 @@ func TestLogout_EquivalenceClasses_WithoutCookieClearsCookie(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: таблица решений.
-// Проверяем результат VerifyRequest в зависимости от наличия cookie и состояния сессии.
 func TestVerifyRequest_DecisionTable(t *testing.T) {
 	svc := newTestAuthService(&mockRepo{})
 	validID, _ := svc.sessionMgr.Create(99)
@@ -665,8 +621,6 @@ func TestVerifyRequest_DecisionTable(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем, что OptionalUserMiddleware кладёт user id и user в контекст.
 func TestOptionalUserMiddleware_Scenario_AuthenticatedRequestInjectsUserIntoContext(t *testing.T) {
 	repo := &mockRepo{
 		getUserByID: func(_ context.Context, id int) (*users.User, error) {
@@ -718,8 +672,6 @@ func TestOptionalUserMiddleware_Scenario_AuthenticatedRequestInjectsUserIntoCont
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем класс запроса без авторизации.
 func TestOptionalUserMiddleware_EquivalenceClasses_UnauthenticatedRequestCallsNextWithoutUser(t *testing.T) {
 	svc := newTestAuthService(&mockRepo{})
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -749,8 +701,6 @@ func TestOptionalUserMiddleware_EquivalenceClasses_UnauthenticatedRequestCallsNe
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем, что RequireAuth пропускает авторизованный запрос дальше по цепочке обработчиков.
 func TestRequireAuth_Scenario_AuthenticatedRequestCallsNext(t *testing.T) {
 	repo := &mockRepo{
 		getUserByID: func(_ context.Context, id int) (*users.User, error) {
@@ -780,8 +730,6 @@ func TestRequireAuth_Scenario_AuthenticatedRequestCallsNext(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем класс неавторизованного запроса к RequireAuth.
 func TestRequireAuth_EquivalenceClasses_UnauthenticatedRequestReturnsUnauthorized(t *testing.T) {
 	svc := newTestAuthService(&mockRepo{})
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -803,8 +751,6 @@ func TestRequireAuth_EquivalenceClasses_UnauthenticatedRequestReturnsUnauthorize
 	}
 }
 
-// Техника тест-дизайна: таблица решений.
-// Проверяем RequireRole по комбинациям: наличие сессии, успешная загрузка пользователя и разрешённость роли.
 func TestRequireRole_DecisionTable(t *testing.T) {
 	lookupErr := fmt.Errorf("lookup failed")
 
@@ -923,8 +869,6 @@ func TestRequireRole_DecisionTable(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем извлечение user id из контекста для классов: отсутствует, неверный тип, корректный тип.
 func TestUserIDFromContext_EquivalenceClasses(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -950,8 +894,6 @@ func TestUserIDFromContext_EquivalenceClasses(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем извлечение user из контекста для классов: отсутствует, неверный тип, корректный тип.
 func TestUserFromContext_EquivalenceClasses(t *testing.T) {
 	user := &users.User{ID: 42, Role: users.RoleAdmin}
 

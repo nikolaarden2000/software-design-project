@@ -88,7 +88,7 @@ services:
 
         test "$$ready" = 1
 
-        npx playwright test e2e/booking.playwright.spec.js --workers=1 --reporter=list,html
+        npm run e2e:ci
 
 volumes:
   e2e-postgres-data:

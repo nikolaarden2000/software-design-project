@@ -6,7 +6,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/nikolaarden2000/software-design-project/backend/app"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/app"
 )
 
 func main() {

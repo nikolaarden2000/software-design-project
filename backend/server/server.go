@@ -5,11 +5,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/nikolaarden2000/software-design-project/backend/bookings"
-	"github.com/nikolaarden2000/software-design-project/backend/companies"
-	"github.com/nikolaarden2000/software-design-project/backend/locations"
-	"github.com/nikolaarden2000/software-design-project/backend/rooms"
-	"github.com/nikolaarden2000/software-design-project/backend/users"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/bookings"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/companies"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/locations"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/rooms"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/users"
 )
 
 type AuthService interface {

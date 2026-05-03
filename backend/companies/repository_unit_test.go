@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/nikolaarden2000/software-design-project/backend/db"
 	pgxmock "github.com/pashagolub/pgxmock/v2"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/db"
 )
 
 func newCompaniesMock(t *testing.T) pgxmock.PgxPoolIface {
@@ -37,8 +37,6 @@ func companyColumns() []string {
 	return []string{"id", "name", "description", "locations_count"}
 }
 
-// Техника тест-дизайна: Сценарное тестирование (Use Case Testing).
-// Проверяем позитивный сценарий: успешное получение списка компаний вместе с количеством локаций.
 func TestListCompanies_EquivalencePartitioning_NonEmptyResult(t *testing.T) {
 	mock := newCompaniesMock(t)
 	repo := newCompaniesRepo(mock)
@@ -68,8 +66,6 @@ func TestListCompanies_EquivalencePartitioning_NonEmptyResult(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Эквивалентное разбиение (Equivalence Partitioning).
-// Проверяем класс пустого результата: компаний нет, возвращается не nil, а пустой slice.
 func TestListCompanies_EquivalencePartitioning_EmptyResult(t *testing.T) {
 	mock := newCompaniesMock(t)
 	repo := newCompaniesRepo(mock)
@@ -90,8 +86,6 @@ func TestListCompanies_EquivalencePartitioning_EmptyResult(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Предугадывание ошибок (Error Guessing).
-// Проверяем, что ошибка запроса к БД корректно пробрасывается вызывающему коду.
 func TestListCompanies_ErrorGuessing_QueryError(t *testing.T) {
 	mock := newCompaniesMock(t)
 	repo := newCompaniesRepo(mock)
@@ -107,8 +101,6 @@ func TestListCompanies_ErrorGuessing_QueryError(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Предугадывание ошибок (Error Guessing).
-// Проверяем реакцию системы на ошибку сканирования строки (несовпадение типов).
 func TestListCompanies_ErrorGuessing_ScanError(t *testing.T) {
 	mock := newCompaniesMock(t)
 	repo := newCompaniesRepo(mock)
@@ -126,9 +118,6 @@ func TestListCompanies_ErrorGuessing_ScanError(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Эквивалентное разбиение (Equivalence Partitioning).
-// Объединенный тест валидных классов: нормальное заполнение полей (с обрезкой пробелов)
-// и создание с разрешенным пустым описанием.
 func TestCreateCompany_EquivalencePartitioning_Success(t *testing.T) {
 	cases := []struct {
 		name       string
@@ -169,8 +158,6 @@ func TestCreateCompany_EquivalencePartitioning_Success(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Эквивалентное разбиение (Equivalence Partitioning).
-// Проверяем класс невалидных названий компании: полностью пустая строка и строка из пробелов.
 func TestCreateCompany_EquivalencePartitioning_EmptyName(t *testing.T) {
 	cases := []struct {
 		name        string
@@ -194,8 +181,6 @@ func TestCreateCompany_EquivalencePartitioning_EmptyName(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Предугадывание ошибок (Error Guessing).
-// Проверяем преобразование специфичной ошибки PostgreSQL (unique violation) в доменную.
 func TestCreateCompany_ErrorGuessing_UniqueViolation(t *testing.T) {
 	mock := newCompaniesMock(t)
 	repo := newCompaniesRepo(mock)
@@ -211,8 +196,6 @@ func TestCreateCompany_ErrorGuessing_UniqueViolation(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Предугадывание ошибок (Error Guessing).
-// Проверяем, что общая ошибка БД при создании пробрасывается корректно.
 func TestCreateCompany_ErrorGuessing_DBError(t *testing.T) {
 	mock := newCompaniesMock(t)
 	repo := newCompaniesRepo(mock)
@@ -229,8 +212,6 @@ func TestCreateCompany_ErrorGuessing_DBError(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Анализ граничных значений (Boundary Value Analysis).
-// Проверяем недопустимые значения id: граница невалидных значений (0) и ниже (-1).
 func TestExistsByID_BoundaryValueAnalysis_InvalidIDs(t *testing.T) {
 	cases := []struct {
 		name string
@@ -257,8 +238,6 @@ func TestExistsByID_BoundaryValueAnalysis_InvalidIDs(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Эквивалентное разбиение (Equivalence Partitioning).
-// Проверяем два валидных класса: компания существует и компания не существует.
 func TestExistsByID_EquivalencePartitioning_ValidIDs(t *testing.T) {
 	cases := []struct {
 		name     string
@@ -290,8 +269,6 @@ func TestExistsByID_EquivalencePartitioning_ValidIDs(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Предугадывание ошибок (Error Guessing).
-// Проверяем, что ошибка БД при запросе существования возвращается вызывающему коду.
 func TestExistsByID_ErrorGuessing_DBError(t *testing.T) {
 	mock := newCompaniesMock(t)
 	repo := newCompaniesRepo(mock)

@@ -8,12 +8,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/nikolaarden2000/software-design-project/backend/auth"
-	"github.com/nikolaarden2000/software-design-project/backend/companies"
-	"github.com/nikolaarden2000/software-design-project/backend/db"
-	"github.com/nikolaarden2000/software-design-project/backend/locations"
-	"github.com/nikolaarden2000/software-design-project/backend/rooms"
-	"github.com/nikolaarden2000/software-design-project/backend/users"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/auth"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/companies"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/db"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/locations"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/rooms"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/users"
 )
 
 type testCompanyRepo struct {
@@ -80,8 +80,6 @@ func newSuperuserHandlersTestServer(authSvc AuthService, userRepo UserRepo, comp
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем получение списка компаний.
 func TestListCompaniesHandler_EquivalenceClasses_NonEmptyResult(t *testing.T) {
 	companyRepo := &testCompanyRepo{
 		listCompanies: func(context.Context) ([]companies.Company, error) {
@@ -109,8 +107,6 @@ func TestListCompaniesHandler_EquivalenceClasses_NonEmptyResult(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем создание компании.
 func TestCreateCompanyHandler_Scenario_Success(t *testing.T) {
 	companyRepo := &testCompanyRepo{
 		createCompany: func(_ context.Context, name, description string) (*companies.Company, error) {
@@ -132,8 +128,6 @@ func TestCreateCompanyHandler_Scenario_Success(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: таблица решений.
-// Проверяем соответствие ошибок CreateCompany HTTP-ответам.
 func TestCreateCompanyHandler_DecisionTable_RepoErrors(t *testing.T) {
 	cases := []struct {
 		name       string
@@ -172,8 +166,6 @@ func TestCreateCompanyHandler_DecisionTable_RepoErrors(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем класс запроса списка локаций с фильтрами company_id и city.
 func TestListLocationsHandler_EquivalenceClasses_SuccessWithFilters(t *testing.T) {
 	locationRepo := &testLocationRepo{
 		listLocations: func(_ context.Context, companyID *int, city *string) ([]locations.Location, error) {
@@ -198,8 +190,6 @@ func TestListLocationsHandler_EquivalenceClasses_SuccessWithFilters(t *testing.T
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем создание локации после успешной проверки компании.
 func TestCreateLocationHandler_Scenario_Success(t *testing.T) {
 	companyRepo := &testCompanyRepo{
 		existsByID: func(_ context.Context, id int) (bool, error) {
@@ -231,8 +221,6 @@ func TestCreateLocationHandler_Scenario_Success(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем создание локации для несуществующей компании.
 func TestCreateLocationHandler_EquivalenceClasses_CompanyNotFound(t *testing.T) {
 	companyRepo := &testCompanyRepo{
 		existsByID: func(context.Context, int) (bool, error) {
@@ -257,8 +245,6 @@ func TestCreateLocationHandler_EquivalenceClasses_CompanyNotFound(t *testing.T) 
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем получение списка администраторов.
 func TestListAdminsHandler_EquivalenceClasses_NonEmptyResult(t *testing.T) {
 	userRepo := &testUserRepo{
 		listAdmins: func(context.Context) ([]users.Admin, error) {
@@ -277,8 +263,6 @@ func TestListAdminsHandler_EquivalenceClasses_NonEmptyResult(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем создание администратора через auth.RegisterWithRole.
 func TestCreateAdminHandler_Scenario_Success(t *testing.T) {
 	authSvc := &testAuthService{
 		registerWithRole: func(_ context.Context, username, email, password, role string) (int, error) {
@@ -306,8 +290,6 @@ func TestCreateAdminHandler_Scenario_Success(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: таблица решений.
-// Проверяем соответствие ошибок RegisterWithRole HTTP-ответам.
 func TestCreateAdminHandler_DecisionTable_RegisterErrors(t *testing.T) {
 	cases := []struct {
 		name       string
@@ -351,8 +333,6 @@ func TestCreateAdminHandler_DecisionTable_RegisterErrors(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем назначение администратора на локацию.
 func TestAssignAdminToLocationHandler_Scenario_Success(t *testing.T) {
 	userRepo := &testUserRepo{
 		assignAdminToLocation: func(_ context.Context, adminID, locationID int) error {
@@ -375,8 +355,6 @@ func TestAssignAdminToLocationHandler_Scenario_Success(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: таблица решений.
-// Проверяем соответствие ошибок AssignAdminToLocation HTTP-ответам.
 func TestAssignAdminToLocationHandler_DecisionTable_RepoErrors(t *testing.T) {
 	cases := []struct {
 		name       string
@@ -417,8 +395,6 @@ func TestAssignAdminToLocationHandler_DecisionTable_RepoErrors(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем удаление назначения администратора на локацию.
 func TestDeleteAdminLocationAssignmentHandler_Scenario_Success(t *testing.T) {
 	userRepo := &testUserRepo{
 		deleteAdminLocationAssignment: func(_ context.Context, adminID, locationID int) error {
@@ -445,8 +421,6 @@ func TestDeleteAdminLocationAssignmentHandler_Scenario_Success(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем получение помещений на модерации.
 func TestModerationRoomsHandler_EquivalenceClasses_NonEmptyResult(t *testing.T) {
 	roomRepo := &testRoomRepo{
 		listModerationRooms: func(context.Context) ([]rooms.ModerationRoom, error) {
@@ -465,8 +439,6 @@ func TestModerationRoomsHandler_EquivalenceClasses_NonEmptyResult(t *testing.T) 
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем одобрение помещения.
 func TestApproveRoomHandler_StateTransitions_ApprovePublishesRoom(t *testing.T) {
 	roomRepo := &testRoomRepo{
 		approveRoom: func(_ context.Context, roomID int) error {
@@ -494,8 +466,6 @@ func TestApproveRoomHandler_StateTransitions_ApprovePublishesRoom(t *testing.T) 
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем отклонение помещения.
 func TestRejectRoomHandler_StateTransitions_RejectMovesRoomToRejected(t *testing.T) {
 	roomRepo := &testRoomRepo{
 		rejectRoom: func(_ context.Context, roomID int, reason string) error {
@@ -523,8 +493,6 @@ func TestRejectRoomHandler_StateTransitions_RejectMovesRoomToRejected(t *testing
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем архивирование помещения суперпользователем.
 func TestArchiveRoomHandler_StateTransitions_ArchiveMovesRoomToArchived(t *testing.T) {
 	roomRepo := &testRoomRepo{
 		archiveRoom: func(_ context.Context, roomID int) error {
@@ -552,8 +520,6 @@ func TestArchiveRoomHandler_StateTransitions_ArchiveMovesRoomToArchived(t *testi
 	}
 }
 
-// Техника тест-дизайна: таблица решений.
-// Проверяем общий маппинг ошибок модерации помещения.
 func TestApproveRoomHandler_DecisionTable_ModerationErrors(t *testing.T) {
 	cases := []struct {
 		name       string

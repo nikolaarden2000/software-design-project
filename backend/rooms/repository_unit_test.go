@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nikolaarden2000/software-design-project/backend/db"
 	pgxmock "github.com/pashagolub/pgxmock/v2"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/db"
 )
 
 func newRoomsMock(t *testing.T) pgxmock.PgxPoolIface {
@@ -75,8 +75,6 @@ func expectLastActiveOrFutureBookingEnd(mock pgxmock.PgxPoolIface, roomID int, n
 		WillReturnRows(pgxmock.NewRows([]string{"max"}).AddRow(endTime))
 }
 
-// Техника тест-дизайна: Классы эквивалентности.
-// Проверяем валидные статусы (один класс) и невалидные статусы (неизвестный, пустой, неверный регистр).
 func TestIsValidStatus(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -102,10 +100,6 @@ func TestIsValidStatus(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Классы эквивалентности и Граничные значения.
-// Проверяем граничные значения (0, 1 для чисел; 5, 6 для массивов),
-// границы временных интервалов (from < to, from == to, from > to),
-// а также классы валидной нормализации (усечение пробелов) и невалидных форматов.
 func TestNormalizeAdminRoomInput(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -166,7 +160,6 @@ func TestNormalizeAdminRoomInput(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Классы эквивалентности.
 func TestStringPtrFromNull(t *testing.T) {
 	cases := []struct {
 		name  string
@@ -190,9 +183,6 @@ func TestStringPtrFromNull(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Таблица решений и Граничные значения.
-// Граничные значения: проверка locationID <= 0.
-// Таблица решений: комбинации существования (exists) и доступности (accessible) в БД.
 func TestCheckLocationAccess(t *testing.T) {
 	cases := []struct {
 		name       string
@@ -223,7 +213,6 @@ func TestCheckLocationAccess(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Таблица решений и Граничные значения.
 func TestCheckRoomAccess(t *testing.T) {
 	cases := []struct {
 		name       string
@@ -253,8 +242,6 @@ func TestCheckRoomAccess(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Классы эквивалентности и Граничные значения.
-// Границы: limit <= 0, lastID < 0. Класс эквивалентности: успешная выборка списка.
 func TestGetRoomsBatchByCity(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -302,8 +289,6 @@ func TestGetRoomsBatchByCity(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Классы эквивалентности.
-// Проверка валидного/невалидного статусов фильтрации и успешного маппинга ответа БД.
 func TestListAdminRooms(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -350,8 +335,6 @@ func TestListAdminRooms(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Классы эквивалентности и Граничные значения.
-// Границы: roomID <= 0. Классы: пустая причина, причина из пробелов, валидное отклонение.
 func TestRejectRoom(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -389,9 +372,6 @@ func TestRejectRoom(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Таблица решений и Граничные значения.
-// Границы: roomID <= 0.
-// Таблица решений: комбинации режимов архивирования и наличия будущих броней.
 func TestArchiveAdminRoom(t *testing.T) {
 	now := time.Date(2026, 4, 27, 10, 0, 0, 0, time.UTC)
 	lastBookingEnd := now.Add(3 * time.Hour)
@@ -447,8 +427,6 @@ func TestArchiveAdminRoom(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Классы эквивалентности.
-// Проверяем успешное применение архивации БД и корректный проброс ошибки (Error handling).
 func TestApplyDueArchivedRooms(t *testing.T) {
 	now := fixedRoomTime(10)
 	dbErr := errors.New("db timeout")
@@ -479,8 +457,6 @@ func TestApplyDueArchivedRooms(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Классы эквивалентности.
-// Классы ответов базы данных: непустой результат, пустой результат (возврат пустого среза), ошибка.
 func TestGetCompaniesByCity(t *testing.T) {
 	dbErr := errors.New("timeout")
 	cases := []struct {
@@ -531,8 +507,6 @@ func TestGetCompaniesByCity(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Классы эквивалентности и Граничные значения.
-// Границы: roomID <= 0. Классы: найдено, не найдено.
 func TestGetRoomPageData(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -567,8 +541,6 @@ func TestGetRoomPageData(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Таблица решений и Граничные значения.
-// Границы: roomID <= 0. Таблица решений: влияние статуса и будущих броней на флаг CanArchiveNow.
 func TestGetAdminRoom(t *testing.T) {
 	cases := []struct {
 		name                    string
@@ -608,8 +580,6 @@ func TestGetAdminRoom(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Классы эквивалентности и Граничные значения.
-// Границы: creatorID <= 0.
 func TestCreateAdminRoom(t *testing.T) {
 	cases := []struct {
 		name      string
@@ -639,9 +609,6 @@ func TestCreateAdminRoom(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Классы эквивалентности и Граничные значения.
-// Границы: roomID <= 0.
-// Классы (результаты UPDATE): обновлена 1 строка (успех) и обновлено 0 строк (ErrConflict).
 func TestUpdateAdminRoom(t *testing.T) {
 	cases := []struct {
 		name         string
@@ -675,8 +642,6 @@ func TestUpdateAdminRoom(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Классы эквивалентности и Граничные значения.
-// Аналогично UpdateAdminRoom — классы затронутых строк.
 func TestSubmitAdminRoom(t *testing.T) {
 	cases := []struct {
 		name         string
@@ -705,7 +670,6 @@ func TestSubmitAdminRoom(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Классы эквивалентности.
 func TestListModerationRooms(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -728,7 +692,7 @@ func TestListModerationRooms(t *testing.T) {
 			repo := newRoomsRepo(mock)
 			tc.setup(mock)
 			_, err := repo.ListModerationRooms(context.Background())
-			// Use string compare for exact mock error check or Is if wrapped properly
+
 			if err != nil && tc.wantErr != nil && err.Error() != tc.wantErr.Error() {
 				t.Fatalf("got error %v, want %v", err, tc.wantErr)
 			}
@@ -736,9 +700,6 @@ func TestListModerationRooms(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: Классы эквивалентности и Граничные значения.
-// Границы: roomID <= 0.
-// Классы: успешное обновление (1 строка), конфликт (0 строк, комната существует), не найдено (0 строк, комнаты нет).
 func TestModerationUpdateStatusMethods(t *testing.T) {
 	cases := []struct {
 		name         string

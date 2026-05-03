@@ -10,12 +10,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nikolaarden2000/software-design-project/backend/auth"
-	"github.com/nikolaarden2000/software-design-project/backend/bookings"
-	"github.com/nikolaarden2000/software-design-project/backend/db"
-	"github.com/nikolaarden2000/software-design-project/backend/httpapi"
-	"github.com/nikolaarden2000/software-design-project/backend/rooms"
-	"github.com/nikolaarden2000/software-design-project/backend/users"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/auth"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/bookings"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/db"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/httpapi"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/rooms"
+	"gitlab.com/5130904-20104-teams/software-design-project/backend/users"
 )
 
 var errServerTestNotConfigured = errors.New("server test mock: method not configured")
@@ -272,8 +272,6 @@ func readServerError(t *testing.T, w *httptest.ResponseRecorder) *httpapi.APIErr
 	return body.Error
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем преобразование внутренней модели пользователя в DTO без password_hash.
 func TestToUserDTO_EquivalenceClasses_MapsPublicFields(t *testing.T) {
 	u := &users.User{
 		ID:       7,
@@ -290,8 +288,6 @@ func TestToUserDTO_EquivalenceClasses_MapsPublicFields(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем успешную регистрацию: handler вызывает auth.Register, затем GetUserByID и возвращает user DTO.
 func TestRegisterHandler_Scenario_Success(t *testing.T) {
 	authSvc := &testAuthService{
 		register: func(_ context.Context, username, email, password string) (int, error) {
@@ -329,8 +325,6 @@ func TestRegisterHandler_Scenario_Success(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем класс некорректного JSON body.
 func TestRegisterHandler_EquivalenceClasses_InvalidJSONReturnsBadRequest(t *testing.T) {
 	s := newHTTPHandlersTestServer(&testAuthService{}, nil, nil)
 
@@ -349,8 +343,6 @@ func TestRegisterHandler_EquivalenceClasses_InvalidJSONReturnsBadRequest(t *test
 	}
 }
 
-// Техника тест-дизайна: таблица решений.
-// Проверяем соответствие ошибок auth.Register HTTP-статусам и API-кодам.
 func TestRegisterHandler_DecisionTable_RegisterErrors(t *testing.T) {
 	cases := []struct {
 		name       string
@@ -394,8 +386,6 @@ func TestRegisterHandler_DecisionTable_RegisterErrors(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем успешный login и возврат user DTO.
 func TestLoginHandler_Scenario_Success(t *testing.T) {
 	authSvc := &testAuthService{
 		login: func(_ context.Context, email, password string, w http.ResponseWriter) (*users.User, error) {
@@ -427,8 +417,6 @@ func TestLoginHandler_Scenario_Success(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: таблица решений.
-// Проверяем соответствие ошибок auth.Login HTTP-статусам и API-кодам.
 func TestLoginHandler_DecisionTable_LoginErrors(t *testing.T) {
 	cases := []struct {
 		name       string
@@ -468,8 +456,6 @@ func TestLoginHandler_DecisionTable_LoginErrors(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем logout: вызывается auth.Logout и возвращается 204 без тела.
 func TestLogoutHandler_Scenario_ReturnsNoContent(t *testing.T) {
 	logoutCalled := false
 	authSvc := &testAuthService{
@@ -495,8 +481,6 @@ func TestLogoutHandler_Scenario_ReturnsNoContent(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем два класса /me: пользователь отсутствует и пользователь есть в контексте.
 func TestMeHandler_EquivalenceClasses(t *testing.T) {
 	t.Run("anonymous user", func(t *testing.T) {
 		s := newHTTPHandlersTestServer(nil, nil, nil)
@@ -539,8 +523,6 @@ func TestMeHandler_EquivalenceClasses(t *testing.T) {
 	})
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем каталог комнат, значения по умолчанию и pagination-блок.
 func TestRoomsHandler_Scenario_SuccessWithDefaultCityAndPagination(t *testing.T) {
 	roomRepo := &testRoomRepo{
 		getRoomsBatchByCity: func(_ context.Context, lastID, limit int, city string) ([]rooms.Room, error) {
@@ -581,8 +563,6 @@ func TestRoomsHandler_Scenario_SuccessWithDefaultCityAndPagination(t *testing.T)
 	}
 }
 
-// Техника тест-дизайна: граничные значения.
-// Проверяем верхнюю границу limit: значение больше 100 ограничивается до 100.
 func TestRoomsHandler_BoundaryValues_LimitIsCappedTo100(t *testing.T) {
 	roomRepo := &testRoomRepo{
 		getRoomsBatchByCity: func(_ context.Context, _ int, limit int, _ string) ([]rooms.Room, error) {
@@ -604,8 +584,6 @@ func TestRoomsHandler_BoundaryValues_LimitIsCappedTo100(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: таблица решений.
-// Проверяем соответствие ошибок roomRepo.GetRoomsBatchByCity HTTP-ответам.
 func TestRoomsHandler_DecisionTable_RepoErrors(t *testing.T) {
 	cases := []struct {
 		name       string
@@ -644,8 +622,6 @@ func TestRoomsHandler_DecisionTable_RepoErrors(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем получение фильтров каталога по городу.
 func TestRoomFiltersHandler_EquivalenceClasses_ExplicitCity(t *testing.T) {
 	roomRepo := &testRoomRepo{
 		getCompaniesByCity: func(_ context.Context, city string) ([]string, error) {
@@ -672,8 +648,6 @@ func TestRoomFiltersHandler_EquivalenceClasses_ExplicitCity(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем получение публичной карточки комнаты.
 func TestRoomDetailsHandler_EquivalenceClasses_Found(t *testing.T) {
 	roomRepo := &testRoomRepo{
 		getRoomPageData: func(_ context.Context, roomID int) (*rooms.RoomPageData, error) {
@@ -696,8 +670,6 @@ func TestRoomDetailsHandler_EquivalenceClasses_Found(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: таблица решений.
-// Проверяем соответствие ошибок получения карточки комнаты HTTP-ответам.
 func TestRoomDetailsHandler_DecisionTable_RepoErrors(t *testing.T) {
 	cases := []struct {
 		name       string
@@ -737,8 +709,6 @@ func TestRoomDetailsHandler_DecisionTable_RepoErrors(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: граничные значения.
-// Проверяем верхнюю границу days: значение больше 31 ограничивается до 31.
 func TestRoomAvailabilityHandler_BoundaryValues_DaysIsCappedTo31(t *testing.T) {
 	bookingRepo := &testBookingRepo{
 		getRoomAvailability: func(_ context.Context, roomID, days int, _ time.Time) ([]rooms.DateAvailability, error) {
@@ -765,8 +735,6 @@ func TestRoomAvailabilityHandler_BoundaryValues_DaysIsCappedTo31(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: классы эквивалентности.
-// Проверяем неавторизованный запрос на создание бронирования.
 func TestBookingHandler_EquivalenceClasses_UnauthorizedReturns401(t *testing.T) {
 	s := newHTTPHandlersTestServer(nil, nil, &testBookingRepo{})
 
@@ -785,8 +753,6 @@ func TestBookingHandler_EquivalenceClasses_UnauthorizedReturns401(t *testing.T) 
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем успешное создание бронирования авторизованным пользователем.
 func TestBookingHandler_Scenario_Success(t *testing.T) {
 	bookingRepo := &testBookingRepo{
 		createBooking: func(_ context.Context, userID, roomID int, date string, slots []string, _ time.Time) (int, error) {
@@ -821,8 +787,6 @@ func TestBookingHandler_Scenario_Success(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: таблица решений.
-// Проверяем соответствие ошибок CreateBooking HTTP-ответам.
 func TestBookingHandler_DecisionTable_CreateBookingErrors(t *testing.T) {
 	cases := []struct {
 		name       string
@@ -866,8 +830,6 @@ func TestBookingHandler_DecisionTable_CreateBookingErrors(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем получение истории бронирований текущего пользователя.
 func TestMyBookingsHandler_Scenario_Success(t *testing.T) {
 	bookingRepo := &testBookingRepo{
 		getUserBookings: func(_ context.Context, userID int, _ time.Time) ([]bookings.BookingHistoryItem, error) {
@@ -890,8 +852,6 @@ func TestMyBookingsHandler_Scenario_Success(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: сценарное тестирование, позитивный сценарий.
-// Проверяем успешную отмену бронирования текущим пользователем.
 func TestCancelBookingHandler_Scenario_Success(t *testing.T) {
 	bookingRepo := &testBookingRepo{
 		cancelBooking: func(_ context.Context, bookingID, userID int, _ time.Time) error {
@@ -921,8 +881,6 @@ func TestCancelBookingHandler_Scenario_Success(t *testing.T) {
 	}
 }
 
-// Техника тест-дизайна: таблица решений.
-// Проверяем соответствие ошибок CancelBooking HTTP-ответам.
 func TestCancelBookingHandler_DecisionTable_CancelErrors(t *testing.T) {
 	cases := []struct {
 		name       string
